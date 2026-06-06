@@ -28,6 +28,7 @@ function RegisterPage() {
       });
 
       alert("Registration Successful!");
+      window.location.herf = "/feed";
     } catch (error) {
       alert(error.message);
     }

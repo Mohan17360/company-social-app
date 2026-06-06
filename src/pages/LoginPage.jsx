@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
-import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
@@ -19,7 +16,7 @@ function LoginPage() {
 
       alert("Login Successful!");
 
-      navigate("/feed");
+      window.location.href = "/feed";
     } catch (error) {
       alert(error.message);
     }
@@ -36,7 +33,8 @@ function LoginPage() {
         onChange={(e) => setEmail(e.target.value)}
       />
 
-      <br /><br />
+      <br />
+      <br />
 
       <input
         type="password"
@@ -45,7 +43,8 @@ function LoginPage() {
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      <br /><br />
+      <br />
+      <br />
 
       <button onClick={handleLogin}>
         Login
