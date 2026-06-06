@@ -2,78 +2,91 @@ import { useState, useEffect } from "react";
 import {
   addDoc,
   collection,
-  getDocs,
   doc,
   getDoc,
   updateDoc,
+  deleteDoc,
+  onSnapshot,
 } from "firebase/firestore";
-import { signOut, onAuthStateChanged } from "firebase/auth";
+import {
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+
 import { db, auth } from "../firebase";
+import PostCard from "../components/PostCard";
 
 function FeedPage() {
   const [post, setPost] = useState("");
   const [posts, setPosts] = useState([]);
-  const [userData, setUserData] = useState(null);
-
-  const loadPosts = async () => {
-    try {
-      const querySnapshot = await getDocs(
-        collection(db, "posts")
-      );
-
-      const postList = [];
-
-      querySnapshot.forEach((doc) => {
-        postList.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-
-      setPosts(postList.reverse());
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+  const [userData, setUserData] =
+    useState(null);
 
   useEffect(() => {
-    loadPosts();
+    const unsubscribePosts =
+      onSnapshot(
+        collection(db, "posts"),
+        (snapshot) => {
+          const postList =
+            snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
 
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      async (user) => {
-        if (!user) {
-          window.location.href = "/login";
-          return;
+          setPosts(postList.reverse());
         }
+      );
 
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
+    const unsubscribeAuth =
+      onAuthStateChanged(
+        auth,
+        async (user) => {
+          if (!user) {
+            window.location.href =
+              "/login";
+            return;
+          }
 
-        if (userSnap.exists()) {
-          setUserData(userSnap.data());
+          const userRef = doc(
+            db,
+            "users",
+            user.uid
+          );
+
+          const userSnap =
+            await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            setUserData(
+              userSnap.data()
+            );
+          }
         }
-      }
-    );
+      );
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribePosts();
+      unsubscribeAuth();
+    };
   }, []);
 
   const handlePost = async () => {
     if (!post.trim()) return;
 
     try {
-      await addDoc(collection(db, "posts"), {
-        name: userData.name,
-        role: userData.role,
-        content: post,
-        likes: 0,
-        createdAt: new Date(),
-      });
+      await addDoc(
+        collection(db, "posts"),
+        {
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          content: post,
+          likes: 0,
+          createdAt: new Date(),
+        }
+      );
 
       setPost("");
-
-      loadPosts();
 
       alert("Post Created!");
     } catch (error) {
@@ -82,18 +95,67 @@ function FeedPage() {
   };
 
   const handleLike = async (
-    postId,
-    currentLikes
+    postId
   ) => {
+    try {
+      const postRef = doc(
+        db,
+        "posts",
+        postId
+      );
+
+      const postSnap =
+        await getDoc(postRef);
+
+      if (!postSnap.exists()) return;
+
+      const currentLikes =
+        postSnap.data().likes || 0;
+
+      await updateDoc(postRef, {
+        likes: currentLikes + 1,
+      });
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleEdit = async (
+    postId,
+    newContent
+  ) => {
+    if (!newContent.trim()) return;
+
     try {
       await updateDoc(
         doc(db, "posts", postId),
         {
-          likes: currentLikes + 1,
+          content: newContent,
         }
       );
 
-      loadPosts();
+      alert("Post Updated!");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDelete = async (
+    postId
+  ) => {
+    const confirmDelete =
+      window.confirm(
+        "Delete this post?"
+      );
+
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(
+        doc(db, "posts", postId)
+      );
+
+      alert("Post Deleted!");
     } catch (error) {
       alert(error.message);
     }
@@ -105,7 +167,8 @@ function FeedPage() {
 
       alert("Logged Out!");
 
-      window.location.href = "/login";
+      window.location.href =
+        "/login";
     } catch (error) {
       alert(error.message);
     }
@@ -120,7 +183,8 @@ function FeedPage() {
       {userData && (
         <div
           style={{
-            border: "1px solid gray",
+            border:
+              "1px solid gray",
             padding: "15px",
             marginTop: "15px",
             marginBottom: "20px",
@@ -130,7 +194,9 @@ function FeedPage() {
 
           <p>{userData.email}</p>
 
-          <strong>{userData.role}</strong>
+          <strong>
+            {userData.role}
+          </strong>
         </div>
       )}
 
@@ -158,31 +224,16 @@ function FeedPage() {
       <h2>Posts</h2>
 
       {posts.map((item) => (
-        <div
+        <PostCard
           key={item.id}
-          style={{
-            border: "1px solid gray",
-            padding: "15px",
-            marginTop: "10px",
-          }}
-        >
-          <h3>{item.name}</h3>
-
-          <small>{item.role}</small>
-
-          <p>{item.content}</p>
-
-          <button
-            onClick={() =>
-              handleLike(
-                item.id,
-                item.likes || 0
-              )
-            }
-          >
-            ❤️ Like ({item.likes || 0})
-          </button>
-        </div>
+          post={item}
+          handleLike={handleLike}
+          handleEdit={handleEdit}
+          handleDelete={
+            handleDelete
+          }
+          user={userData}
+        />
       ))}
     </div>
   );
