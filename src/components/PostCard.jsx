@@ -36,6 +36,16 @@ function PostCard({
     user &&
     post.likes?.includes(user.uid);
 
+  const isOwner =
+    user?.email === post.email;
+
+  const badgeColor =
+    post.role === "Owner"
+      ? "#16a34a"
+      : post.role === "Investor"
+      ? "#2563eb"
+      : "#9333ea";
+
   return (
     <>
       <div className="post-card">
@@ -80,12 +90,34 @@ function PostCard({
           )}
 
           <div>
-            <div className="post-name">
-              {post.name}
-            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <div className="post-name">
+                {post.name}
+              </div>
 
-            <div className="post-role">
-              {post.role}
+              <span
+                style={{
+                  background:
+                    badgeColor,
+                  color: "white",
+                  padding:
+                    "2px 8px",
+                  borderRadius:
+                    "20px",
+                  fontSize:
+                    "12px",
+                  fontWeight:
+                    "bold",
+                }}
+              >
+                {post.role}
+              </span>
             </div>
 
             <div className="post-time">
@@ -160,12 +192,18 @@ function PostCard({
                 }
                 style={{
                   width: "100%",
-                  borderRadius: "12px",
-                  marginTop: "10px",
-                  marginBottom: "15px",
-                  maxHeight: "500px",
-                  objectFit: "cover",
-                  cursor: "pointer",
+                  borderRadius:
+                    "12px",
+                  marginTop:
+                    "10px",
+                  marginBottom:
+                    "15px",
+                  maxHeight:
+                    "500px",
+                  objectFit:
+                    "cover",
+                  cursor:
+                    "pointer",
                 }}
               />
             )}
@@ -179,34 +217,70 @@ function PostCard({
               handleLike(post.id)
             }
             style={{
-              background: hasLiked
-                ? "#ef4444"
-                : "#475569",
+              background:
+                hasLiked
+                  ? "#ef4444"
+                  : "#475569",
               color: "white",
             }}
           >
-            {hasLiked ? "❤️" : "🤍"}{" "}
-            {post.likes?.length || 0}
+            {hasLiked
+              ? "❤️"
+              : "🤍"}{" "}
+            {post.likes?.length ||
+              0}{" "}
+            {post.likes?.length ===
+            1
+              ? "Like"
+              : "Likes"}
           </button>
 
-          <button
-            className="edit-btn"
-            onClick={() =>
-              setIsEditing(true)
-            }
-          >
-            ✏️ Edit
-          </button>
+          {isOwner && (
+            <>
+              <button
+                className="edit-btn"
+                onClick={() =>
+                  setIsEditing(
+                    true
+                  )
+                }
+              >
+                ✏️ Edit
+              </button>
 
-          <button
-            className="delete-btn"
-            onClick={() =>
-              handleDelete(post.id)
-            }
-          >
-            🗑 Delete
-          </button>
+              <button
+                className="delete-btn"
+                onClick={() =>
+                  handleDelete(
+                    post.id
+                  )
+                }
+              >
+                🗑 Delete
+              </button>
+            </>
+          )}
         </div>
+
+        {post.likes?.length > 0 && (
+          <p
+            style={{
+              marginTop: "10px",
+              color: "#94a3b8",
+              fontSize: "14px",
+            }}
+          >
+            {hasLiked
+              ? post.likes
+                  .length === 1
+                ? "You liked this"
+                : `You and ${
+                    post.likes
+                      .length - 1
+                  } others liked this`
+              : `${post.likes.length} people liked this`}
+          </p>
+        )}
 
         <CommentSection
           postId={post.id}
@@ -216,9 +290,6 @@ function PostCard({
 
       {showImage && (
         <div
-          onClick={() =>
-            setShowImage(false)
-          }
           style={{
             position: "fixed",
             top: 0,
@@ -228,18 +299,45 @@ function PostCard({
             background:
               "rgba(0,0,0,0.9)",
             display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+            justifyContent:
+              "center",
+            alignItems:
+              "center",
             zIndex: 9999,
           }}
         >
+          <button
+            onClick={() =>
+              setShowImage(false)
+            }
+            style={{
+              position:
+                "absolute",
+              top: "20px",
+              right: "20px",
+              background:
+                "#ef4444",
+              color: "white",
+              border: "none",
+              padding:
+                "10px 15px",
+              borderRadius:
+                "8px",
+              cursor:
+                "pointer",
+            }}
+          >
+            ✕ Close
+          </button>
+
           <img
             src={post.image}
             alt="Full"
             style={{
               maxWidth: "90%",
               maxHeight: "90%",
-              borderRadius: "10px",
+              borderRadius:
+                "10px",
             }}
           />
         </div>
