@@ -18,24 +18,23 @@ import PostCard from "../components/PostCard";
 
 function FeedPage() {
   const [post, setPost] = useState("");
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState("");
   const [posts, setPosts] = useState([]);
-  const [userData, setUserData] =
-    useState(null);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    const unsubscribePosts =
-      onSnapshot(
-        collection(db, "posts"),
-        (snapshot) => {
-          const postList =
-            snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
+    const unsubscribePosts = onSnapshot(
+      collection(db, "posts"),
+      (snapshot) => {
+        const postList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-          setPosts(postList.reverse());
-        }
-      );
+        setPosts(postList.reverse());
+      }
+    );
 
     const unsubscribeAuth =
       onAuthStateChanged(
@@ -70,165 +69,312 @@ function FeedPage() {
     };
   }, []);
 
-  const handlePost = async () => {
-    if (!post.trim()) return;
+  const uploadImage =
+    async () => {
+      if (!image) return "";
 
-    try {
-      await addDoc(
-        collection(db, "posts"),
-        {
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          content: post,
-          likes: 0,
-          createdAt: new Date(),
+      const formData =
+        new FormData();
+
+      formData.append(
+        "file",
+        image
+      );
+
+      formData.append(
+        "upload_preset",
+        "companysocial"
+      );
+
+      const response =
+        await fetch(
+          "https://api.cloudinary.com/v1_1/doocnue5h/image/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+      const data =
+        await response.json();
+
+      return data.secure_url;
+    };
+
+  const handlePost =
+    async () => {
+      if (
+        !post.trim() &&
+        !image
+      )
+        return;
+
+      try {
+        let imageUrl = "";
+
+        if (image) {
+          imageUrl =
+            await uploadImage();
         }
-      );
 
-      setPost("");
+        await addDoc(
+          collection(db, "posts"),
+          {
+            name:
+              userData.name,
+            email:
+              userData.email,
+            role:
+              userData.role,
+            photo:
+              userData.photo || "",
+            content: post,
+            image:
+              imageUrl,
+            likes: 0,
+            createdAt:
+              new Date(),
+            updatedAt:
+              null,
+          }
+        );
 
-      alert("Post Created!");
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+        setPost("");
+        setImage(null);
+        setPreview("");
+      } catch (error) {
+        alert(error.message);
+      }
+    };
 
-  const handleLike = async (
-    postId
-  ) => {
-    try {
-      const postRef = doc(
-        db,
-        "posts",
-        postId
-      );
+  const handleLike =
+    async (postId) => {
+      try {
+        const postRef = doc(
+          db,
+          "posts",
+          postId
+        );
 
-      const postSnap =
-        await getDoc(postRef);
+        const postSnap =
+          await getDoc(postRef);
 
-      if (!postSnap.exists()) return;
+        if (!postSnap.exists())
+          return;
 
-      const currentLikes =
-        postSnap.data().likes || 0;
+        const currentLikes =
+          postSnap.data()
+            .likes || 0;
 
-      await updateDoc(postRef, {
-        likes: currentLikes + 1,
-      });
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+        await updateDoc(
+          postRef,
+          {
+            likes:
+              currentLikes +
+              1,
+          }
+        );
+      } catch (error) {
+        alert(error.message);
+      }
+    };
 
-  const handleEdit = async (
-    postId,
-    newContent
-  ) => {
-    if (!newContent.trim()) return;
+  const handleEdit =
+    async (
+      postId,
+      newContent
+    ) => {
+      if (
+        !newContent.trim()
+      )
+        return;
 
-    try {
-      await updateDoc(
-        doc(db, "posts", postId),
-        {
-          content: newContent,
-        }
-      );
+      try {
+        await updateDoc(
+          doc(
+            db,
+            "posts",
+            postId
+          ),
+          {
+            content:
+              newContent,
+            updatedAt:
+              new Date(),
+          }
+        );
+      } catch (error) {
+        alert(error.message);
+      }
+    };
 
-      alert("Post Updated!");
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+  const handleDelete =
+    async (postId) => {
+      if (
+        !window.confirm(
+          "Delete this post?"
+        )
+      )
+        return;
 
-  const handleDelete = async (
-    postId
-  ) => {
-    const confirmDelete =
-      window.confirm(
-        "Delete this post?"
-      );
+      try {
+        await deleteDoc(
+          doc(
+            db,
+            "posts",
+            postId
+          )
+        );
+      } catch (error) {
+        alert(error.message);
+      }
+    };
 
-    if (!confirmDelete) return;
-
-    try {
-      await deleteDoc(
-        doc(db, "posts", postId)
-      );
-
-      alert("Post Deleted!");
-    } catch (error) {
-      alert(error.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-
-      alert("Logged Out!");
-
-      window.location.href =
-        "/login";
-    } catch (error) {
-      alert(error.message);
-    }
-  };
+  const handleLogout =
+    async () => {
+      try {
+        await signOut(auth);
+        window.location.href =
+          "/login";
+      } catch (error) {
+        alert(error.message);
+      }
+    };
 
   return (
-    <div style={{ padding: "40px" }}>
-      <button onClick={handleLogout}>
-        Logout
-      </button>
+    <div className="feed-container">
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          marginBottom: "20px",
+        }}
+      >
+        <button
+          className="edit-btn"
+          onClick={() =>
+            (window.location.href =
+              "/profile")
+          }
+        >
+          Profile
+        </button>
+
+        <button
+          className="delete-btn"
+          onClick={
+            handleLogout
+          }
+        >
+          Logout
+        </button>
+      </div>
 
       {userData && (
-        <div
-          style={{
-            border:
-              "1px solid gray",
-            padding: "15px",
-            marginTop: "15px",
-            marginBottom: "20px",
-          }}
-        >
-          <h2>{userData.name}</h2>
+        <div className="profile-card">
+          {userData.photo && (
+            <img
+              src={
+                userData.photo
+              }
+              alt="Profile"
+              style={{
+                width:
+                  "100px",
+                height:
+                  "100px",
+                borderRadius:
+                  "50%",
+                objectFit:
+                  "cover",
+                marginBottom:
+                  "15px",
+                border:
+                  "3px solid #2563eb",
+              }}
+            />
+          )}
 
-          <p>{userData.email}</p>
+          <h2 className="profile-name">
+            {userData.name}
+          </h2>
 
-          <strong>
+          <p>
+            {userData.email}
+          </p>
+
+          <p className="profile-role">
             {userData.role}
-          </strong>
+          </p>
         </div>
       )}
 
-      <h1>Social Feed</h1>
+      <h1 className="feed-title">
+        Company Social
+      </h1>
 
-      <textarea
-        rows="6"
-        cols="50"
-        placeholder="What's on your mind?"
-        value={post}
-        onChange={(e) =>
-          setPost(e.target.value)
-        }
-      />
+      <div className="post-box">
+        <textarea
+          placeholder="What's on your mind?"
+          value={post}
+          onChange={(e) =>
+            setPost(
+              e.target.value
+            )
+          }
+        />
 
-      <br />
-      <br />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            setImage(
+              e.target.files[0]
+            );
 
-      <button onClick={handlePost}>
-        Create Post
-      </button>
+            setPreview(
+              URL.createObjectURL(
+                e.target.files[0]
+              )
+            );
+          }}
+        />
 
-      <hr />
+        {preview && (
+          <img
+            src={preview}
+            alt="Preview"
+            style={{
+              width: "100%",
+              marginTop: "15px",
+              borderRadius:
+                "10px",
+            }}
+          />
+        )}
 
-      <h2>Posts</h2>
+        <button
+          className="create-btn"
+          onClick={
+            handlePost
+          }
+        >
+          Share Post
+        </button>
+      </div>
 
       {posts.map((item) => (
         <PostCard
           key={item.id}
           post={item}
-          handleLike={handleLike}
-          handleEdit={handleEdit}
+          handleLike={
+            handleLike
+          }
+          handleEdit={
+            handleEdit
+          }
           handleDelete={
             handleDelete
           }
@@ -240,3 +386,7 @@ function FeedPage() {
 }
 
 export default FeedPage;
+
+
+
+
