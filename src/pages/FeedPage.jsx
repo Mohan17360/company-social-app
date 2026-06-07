@@ -7,7 +7,10 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
+
 import {
   signOut,
   onAuthStateChanged,
@@ -56,9 +59,10 @@ function FeedPage() {
             await getDoc(userRef);
 
           if (userSnap.exists()) {
-            setUserData(
-              userSnap.data()
-            );
+            setUserData({
+              uid: user.uid,
+              ...userSnap.data(),
+          });
           }
         }
       );
@@ -131,9 +135,12 @@ function FeedPage() {
             content: post,
             image:
               imageUrl,
-            likes: 0,
+
+            likes: [],
+
             createdAt:
               new Date(),
+
             updatedAt:
               null,
           }
@@ -162,18 +169,37 @@ function FeedPage() {
         if (!postSnap.exists())
           return;
 
-        const currentLikes =
-          postSnap.data()
-            .likes || 0;
+        const likes =
+          postSnap.data().likes || [];
 
-        await updateDoc(
-          postRef,
-          {
-            likes:
-              currentLikes +
-              1,
-          }
-        );
+        const currentUserId =
+          auth.currentUser.uid;
+
+        if (
+          likes.includes(
+            currentUserId
+          )
+        ) {
+          await updateDoc(
+            postRef,
+            {
+              likes:
+                arrayRemove(
+                  currentUserId
+                ),
+            }
+          );
+        } else {
+          await updateDoc(
+            postRef,
+            {
+              likes:
+                arrayUnion(
+                  currentUserId
+                ),
+            }
+          );
+        }
       } catch (error) {
         alert(error.message);
       }
@@ -234,6 +260,7 @@ function FeedPage() {
     async () => {
       try {
         await signOut(auth);
+
         window.location.href =
           "/login";
       } catch (error) {
@@ -243,13 +270,13 @@ function FeedPage() {
 
   return (
     <div className="feed-container">
-
       <div
         style={{
           display: "flex",
           justifyContent:
             "space-between",
-          marginBottom: "20px",
+          marginBottom:
+            "20px",
         }}
       >
         <button
@@ -330,13 +357,16 @@ function FeedPage() {
           type="file"
           accept="image/*"
           onChange={(e) => {
-            setImage(
-              e.target.files[0]
-            );
+            const file =
+              e.target.files[0];
+
+            if (!file) return;
+
+            setImage(file);
 
             setPreview(
               URL.createObjectURL(
-                e.target.files[0]
+                file
               )
             );
           }}
@@ -348,7 +378,8 @@ function FeedPage() {
             alt="Preview"
             style={{
               width: "100%",
-              marginTop: "15px",
+              marginTop:
+                "15px",
               borderRadius:
                 "10px",
             }}
@@ -386,7 +417,4 @@ function FeedPage() {
 }
 
 export default FeedPage;
-
-
-
 

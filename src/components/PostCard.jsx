@@ -11,6 +11,9 @@ function PostCard({
   const [isEditing, setIsEditing] =
     useState(false);
 
+  const [showImage, setShowImage] =
+    useState(false);
+
   const [editedContent, setEditedContent] =
     useState(post.content);
 
@@ -29,164 +32,219 @@ function PostCard({
     return date.toLocaleString();
   };
 
+  const hasLiked =
+    user &&
+    post.likes?.includes(user.uid);
+
   return (
-    <div className="post-card">
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "10px",
-        }}
-      >
-        {post.photo ? (
-          <img
-            src={post.photo}
-            alt="Profile"
-            style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "50%",
-              objectFit: "cover",
-            }}
-          />
-        ) : (
+    <>
+      <div className="post-card">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "10px",
+          }}
+        >
+          {post.photo ? (
+            <img
+              src={post.photo}
+              alt="Profile"
+              style={{
+                width: "50px",
+                height: "50px",
+                borderRadius: "50%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "50px",
+                height: "50px",
+                borderRadius: "50%",
+                background: "#2563eb",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                color: "white",
+                fontWeight: "bold",
+                fontSize: "20px",
+              }}
+            >
+              {post.name
+                ?.charAt(0)
+                .toUpperCase()}
+            </div>
+          )}
+
+          <div>
+            <div className="post-name">
+              {post.name}
+            </div>
+
+            <div className="post-role">
+              {post.role}
+            </div>
+
+            <div className="post-time">
+              {formatDate(
+                post.createdAt
+              )}
+            </div>
+          </div>
+        </div>
+
+        {post.updatedAt && (
           <div
             style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "50%",
-              background: "#2563eb",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "20px",
+              color: "#f59e0b",
+              marginBottom: "10px",
+              fontSize: "12px",
             }}
           >
-            {post.name?.charAt(0).toUpperCase()}
+            Edited:{" "}
+            {formatDate(
+              post.updatedAt
+            )}
           </div>
         )}
 
-        <div>
-          <div className="post-name">
-            {post.name}
-          </div>
+        {isEditing ? (
+          <>
+            <textarea
+              rows="4"
+              value={editedContent}
+              onChange={(e) =>
+                setEditedContent(
+                  e.target.value
+                )
+              }
+            />
 
-          <div className="post-role">
-            {post.role}
-          </div>
+            <br />
+            <br />
 
-          <div className="post-time">
-            {formatDate(post.createdAt)}
-          </div>
-        </div>
-      </div>
+            <button
+              className="edit-btn"
+              onClick={handleSave}
+            >
+              Save
+            </button>
 
-      {post.updatedAt && (
-        <div
-          style={{
-            color: "#f59e0b",
-            marginBottom: "10px",
-            fontSize: "12px",
-          }}
-        >
-          Edited: {formatDate(post.updatedAt)}
-        </div>
-      )}
+            <button
+              className="delete-btn"
+              onClick={() =>
+                setIsEditing(false)
+              }
+              style={{
+                marginLeft: "10px",
+              }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="post-content">
+              {post.content}
+            </div>
 
-      {isEditing ? (
-        <>
-          <textarea
-            rows="4"
-            value={editedContent}
-            onChange={(e) =>
-              setEditedContent(
-                e.target.value
-              )
+            {post.image && (
+              <img
+                src={post.image}
+                alt="Post"
+                onClick={() =>
+                  setShowImage(true)
+                }
+                style={{
+                  width: "100%",
+                  borderRadius: "12px",
+                  marginTop: "10px",
+                  marginBottom: "15px",
+                  maxHeight: "500px",
+                  objectFit: "cover",
+                  cursor: "pointer",
+                }}
+              />
+            )}
+          </>
+        )}
+
+        <div className="action-buttons">
+          <button
+            className="like-btn"
+            onClick={() =>
+              handleLike(post.id)
             }
-          />
-
-          <br />
-          <br />
+            style={{
+              background: hasLiked
+                ? "#ef4444"
+                : "#475569",
+              color: "white",
+            }}
+          >
+            {hasLiked ? "❤️" : "🤍"}{" "}
+            {post.likes?.length || 0}
+          </button>
 
           <button
             className="edit-btn"
-            onClick={handleSave}
+            onClick={() =>
+              setIsEditing(true)
+            }
           >
-            Save
+            ✏️ Edit
           </button>
 
           <button
             className="delete-btn"
             onClick={() =>
-              setIsEditing(false)
+              handleDelete(post.id)
             }
-            style={{
-              marginLeft: "10px",
-            }}
           >
-            Cancel
+            🗑 Delete
           </button>
-        </>
-      ) : (
-        <>
-          <div className="post-content">
-            {post.content}
-          </div>
+        </div>
 
-          {post.image && (
-            <img
-              src={post.image}
-              alt="Post"
-              style={{
-                width: "100%",
-                borderRadius: "12px",
-                marginTop: "10px",
-                marginBottom: "15px",
-                maxHeight: "500px",
-                objectFit: "cover",
-              }}
-            />
-          )}
-        </>
-      )}
-
-      <div className="action-buttons">
-        <button
-          className="like-btn"
-          onClick={() =>
-            handleLike(post.id)
-          }
-        >
-          ❤️ {post.likes || 0}
-        </button>
-
-        <button
-          className="edit-btn"
-          onClick={() =>
-            setIsEditing(true)
-          }
-        >
-          ✏️ Edit
-        </button>
-
-        <button
-          className="delete-btn"
-          onClick={() =>
-            handleDelete(post.id)
-          }
-        >
-          🗑 Delete
-        </button>
+        <CommentSection
+          postId={post.id}
+          user={user}
+        />
       </div>
 
-      <CommentSection
-        postId={post.id}
-        user={user}
-      />
-    </div>
+      {showImage && (
+        <div
+          onClick={() =>
+            setShowImage(false)
+          }
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background:
+              "rgba(0,0,0,0.9)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+        >
+          <img
+            src={post.image}
+            alt="Full"
+            style={{
+              maxWidth: "90%",
+              maxHeight: "90%",
+              borderRadius: "10px",
+            }}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
