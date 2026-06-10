@@ -11,12 +11,13 @@ import {
 
 import { db } from "../firebase";
 
-function CommentSection({ postId, user }) {
-  const [comment, setComment] =
-    useState("");
-
-  const [comments, setComments] =
-    useState([]);
+function CommentSection({
+  postId,
+  user,
+  postOwnerEmail,
+}) {
+  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState([]);
 
   useEffect(() => {
     const q = query(
@@ -24,80 +25,58 @@ function CommentSection({ postId, user }) {
       where("postId", "==", postId)
     );
 
-    const unsubscribe =
-      onSnapshot(q, (snapshot) => {
-        const data =
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-        setComments(data);
-      });
+      setComments(data);
+    });
 
     return () => unsubscribe();
   }, [postId]);
 
-  const handleComment =
-    async () => {
-      if (!comment.trim()) return;
+  const handleComment = async () => {
+    if (!comment.trim()) return;
 
-      try {
-        await addDoc(
-          collection(db, "comments"),
-          {
-            postId,
-            name: user.name,
-            email: user.email,
-            text: comment,
-            createdAt:
-              new Date(),
-          }
-        );
+    try {
+      await addDoc(collection(db, "comments"), {
+        postId,
+        name: user.name,
+        email: user.email,
+        text: comment,
+        createdAt: new Date(),
+      });
 
-        setComment("");
-      } catch (error) {
-        alert(error.message);
+      if (user.email !== postOwnerEmail) {
+        await addDoc(collection(db, "notifications"), {
+          userEmail: postOwnerEmail,
+          message: `${user.name} commented on your post`,
+          read: false,
+          createdAt: new Date(),
+        });
       }
-    };
 
-  const handleDeleteComment =
-    async (commentId) => {
-      if (
-        !window.confirm(
-          "Delete this comment?"
-        )
-      )
-        return;
+      setComment("");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
-      try {
-        await deleteDoc(
-          doc(
-            db,
-            "comments",
-            commentId
-          )
-        );
-      } catch (error) {
-        alert(error.message);
-      }
-    };
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("Delete this comment?")) return;
 
-  const formatDate = (
-    timestamp
-  ) => {
-    if (!timestamp) return "";
-
-    const date =
-      timestamp.toDate
-        ? timestamp.toDate()
-        : new Date(timestamp);
-
-    return date.toLocaleString();
+    try {
+      await deleteDoc(doc(db, "comments", commentId));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   return (
     <div className="comment-box">
+      {/* Better Comment Input */}
       <div
         style={{
           display: "flex",
@@ -105,16 +84,17 @@ function CommentSection({ postId, user }) {
           marginTop: "15px",
         }}
       >
-        <input
+        <textarea
           className="comment-input"
-          type="text"
-          placeholder="Add a comment..."
+          placeholder="Write a comment..."
           value={comment}
-          onChange={(e) =>
-            setComment(
-              e.target.value
-            )
-          }
+          onChange={(e) => setComment(e.target.value)}
+          rows="1"
+          style={{
+            resize: "vertical",
+            minHeight: "42px",
+            fontFamily: "inherit",
+          }}
         />
 
         <button
@@ -122,10 +102,9 @@ function CommentSection({ postId, user }) {
           style={{
             width: "120px",
             marginTop: "0",
+            height: "42px",
           }}
-          onClick={
-            handleComment
-          }
+          onClick={handleComment}
         >
           Post
         </button>
@@ -139,11 +118,7 @@ function CommentSection({ postId, user }) {
             fontSize: "14px",
           }}
         >
-          💬 {comments.length}{" "}
-          Comment
-          {comments.length > 1
-            ? "s"
-            : ""}
+          💬 {comments.length} Comment{comments.length > 1 ? "s" : ""}
         </p>
       )}
 
@@ -153,47 +128,64 @@ function CommentSection({ postId, user }) {
           className="comment"
           style={{
             marginTop: "10px",
-            padding: "10px",
-            background:
-              "#334155",
-            borderRadius:
-              "8px",
+            padding: "12px",
+            background: "#334155",
+            borderRadius: "10px",
           }}
         >
+          {/* Comment Header Section */}
           <div
+            className="comment-header"
             style={{
               display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems:
-                "center",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: "8px",
             }}
           >
-            <strong>
-              {c.name}
-            </strong>
-
-            {user?.email ===
-              c.email && (
-              <button
-                onClick={() =>
-                  handleDeleteComment(
-                    c.id
-                  )
-                }
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                className="comment-avatar"
                 style={{
-                  background:
-                    "#ef4444",
-                  color:
-                    "white",
-                  border:
-                    "none",
-                  padding:
-                    "4px 8px",
-                  borderRadius:
-                    "6px",
-                  cursor:
-                    "pointer",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  background: "#2563eb",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  color: "white",
+                  fontWeight: "bold",
+                  fontSize: "14px",
+                }}
+              >
+                {c.name?.charAt(0)?.toUpperCase()}
+              </div>
+
+              <div>
+                <strong style={{ display: "block", fontSize: "14px" }}>
+                  {c.name}
+                </strong>
+                <div className="comment-time" style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px" }}>
+                  {c.createdAt?.seconds
+                    ? new Date(c.createdAt.seconds * 1000).toLocaleString()
+                    : "Just now"}
+                </div>
+              </div>
+            </div>
+
+            {user?.email === c.email && (
+              <button
+                onClick={() => handleDeleteComment(c.id)}
+                style={{
+                  background: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
                 }}
               >
                 Delete
@@ -201,24 +193,10 @@ function CommentSection({ postId, user }) {
             )}
           </div>
 
-          <p
-            style={{
-              marginTop: "5px",
-            }}
-          >
+          {/* Comment Text Layout Layer */}
+          <p className="comment-text" style={{ fontSize: "14px", lineHeight: "1.5", margin: "0 0 0 42px" }}>
             {c.text}
           </p>
-
-          <small
-            style={{
-              color:
-                "#94a3b8",
-            }}
-          >
-            {formatDate(
-              c.createdAt
-            )}
-          </small>
         </div>
       ))}
     </div>

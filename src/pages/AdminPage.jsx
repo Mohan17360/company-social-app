@@ -1,0 +1,475 @@
+import { useEffect, useState } from "react";
+import { 
+  collection, 
+  onSnapshot, 
+  deleteDoc, 
+  doc, 
+  updateDoc,
+  query,     
+  where,     
+  getDocs    
+} from "firebase/firestore";
+import { db } from "../firebase";
+// Step A: Import useNavigate
+import { useNavigate } from "react-router-dom";
+
+function AdminPage() {
+  const [users, setUsers] = useState([]);
+  const [posts, setPosts] = useState([]); 
+  const [reports, setReports] = useState([]); // Real-time reports queue state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [notificationsCount, setNotificationsCount] = useState(0);
+
+  // Step B: Initialize navigate hook
+  const navigate = useNavigate();
+
+  // Real-time snapshot listeners for administrative workspace collections
+  useEffect(() => {
+    // 1. Users System Listener
+    const unsubscribeUsers = onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        const usersList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setUsers(usersList);
+      },
+      (error) => console.error("Error listening to users collection:", error)
+    );
+
+    // 2. Posts Content Feed Moderation Listener
+    const unsubscribePostsList = onSnapshot(
+      collection(db, "posts"),
+      (snapshot) => {
+        const postsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setPosts(postsData);
+      },
+      (error) => console.error("Error listening to posts collection:", error)
+    );
+
+    // 3. Flagged Reports Operations Queue Listener
+    const unsubscribeReports = onSnapshot(
+      collection(db, "reports"),
+      (snapshot) => {
+        const reportsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setReports(reportsData);
+      },
+      (error) => console.error("Error listening to reports collection:", error)
+    );
+
+    // 4. Global Comments Analytics Counter Listener
+    const unsubscribeComments = onSnapshot(
+      collection(db, "comments"),
+      (snapshot) => {
+        setCommentsCount(snapshot.size);
+      },
+      (error) => console.error("Error listening to comments collection:", error)
+    );
+
+    // 5. Global Notifications Analytics Counter Listener
+    const unsubscribeNotifications = onSnapshot(
+      collection(db, "notifications"),
+      (snapshot) => {
+        setNotificationsCount(snapshot.size);
+      },
+      (error) => console.error("Error listening to notifications collection:", error)
+    );
+
+    // Detach all listeners clean on unmount sequence to clear browser memory leaks
+    return () => {
+      unsubscribeUsers();
+      unsubscribePostsList();
+      unsubscribeReports();
+      unsubscribeComments();
+      unsubscribeNotifications();
+    };
+  }, []);
+
+  // Function to drop a user profile along with all written posts, comments, and notifications
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (!window.confirm("Delete this user permanently? This cannot be undone.")) return;
+
+    try {
+      // 1. Locate and purge all posts matching the target user's email identifier
+      const postsQuery = query(
+        collection(db, "posts"),
+        where("email", "==", userEmail)
+      );
+      const postsSnapshot = await getDocs(postsQuery);
+      for (const postDoc of postsSnapshot.docs) {
+        await deleteDoc(doc(db, "posts", postDoc.id));
+      }
+
+      // 2. Locate and purge all written comments matching the target user's email identifier
+      const commentsQuery = query(
+        collection(db, "comments"),
+        where("email", "==", userEmail)
+      );
+      const commentsSnapshot = await getDocs(commentsQuery);
+      for (const commentDoc of commentsSnapshot.docs) {
+        await deleteDoc(doc(db, "comments", commentDoc.id));
+      }
+
+      // 3. Locate and purge all notifications matching the target user's email identifier
+      const notificationsQuery = query(
+        collection(db, "notifications"),
+        where("userEmail", "==", userEmail)
+      );
+      const notificationsSnapshot = await getDocs(notificationsQuery);
+      for (const notificationDoc of notificationsSnapshot.docs) {
+        await deleteDoc(doc(db, "notifications", notificationDoc.id));
+      }
+
+      // 4. Destroy core user index profile document reference element 
+      await deleteDoc(doc(db, "users", userId));
+
+      alert("User and all related data deleted");
+    } catch (error) {
+      console.error("Cascading deletion failed: ", error);
+      alert(error.message);
+    }
+  };
+
+  // Function to update user access permission tiers inside Firestore
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        role: newRole,
+      });
+      alert("User access role updated successfully.");
+    } catch (error) {
+      console.error("Error patching user assignment field:", error);
+      alert(`Failed to update security tier: ${error.message}`);
+    }
+  };
+
+  // Function to toggle a user's connection session authorization flag status
+  const handleBanUser = async (userId, currentBanStatus) => {
+    const contextAction = currentBanStatus ? "unban" : "ban";
+    if (!window.confirm(`Are you certain you want to ${contextAction} this system user?`)) return;
+
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        isBanned: !currentBanStatus,
+      });
+      alert(`User context registry state updated to ${currentBanStatus ? "Unbanned" : "Banned"}.`);
+    } catch (error) {
+      console.error("Error executing collection field patch routing:", error);
+      alert(`Failed to execute profile flag assignment change: ${error.message}`);
+    }
+  };
+
+  // Moderation function to delete a post directly from the dashboard
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      await deleteDoc(doc(db, "posts", postId));
+      alert("Post deleted successfully");
+    } catch (error) {
+      console.error("Error moderating post:", error);
+      alert(error.message);
+    }
+  };
+
+  // Moderation function to clear out a false/reviewed content flag report log
+  const handleDismissReport = async (reportId) => {
+    try {
+      await deleteDoc(doc(db, "reports", reportId));
+      alert("Report record dismissed successfully.");
+    } catch (error) {
+      console.error("Error removing report entry index:", error);
+      alert(error.message);
+    }
+  };
+
+  // Process user parameters client-side across names, emails, and roles
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="feed-container">
+      <h1 className="feed-title">Admin Dashboard</h1>
+
+      {/* Step C: Injected Back and Refresh dashboard controls row */}
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          marginBottom: "20px",
+        }}
+      >
+        <button
+          className="edit-btn"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
+
+        <button
+          className="create-btn"
+          onClick={() => window.location.reload()}
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      {/* Dynamic Search Workspace Bar */}
+      <input
+        className="search-box"
+        type="text"
+        placeholder="Filter users by name, email string, or target structural access level..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "12px",
+          marginBottom: "20px",
+          borderRadius: "6px",
+          border: "1px solid #cbd5e1",
+          fontSize: "16px",
+          boxSizing: "border-box"
+        }}
+      />
+
+      {/* Platform Summary Analytics Matrix Card */}
+      <div 
+        className="post-card" 
+        style={{ 
+          borderLeft: "5px solid #2563eb", 
+          marginBottom: "25px",
+          background: "#f8fafc" 
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#1e293b" }}>Platform Statistics</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", padding: "5px 0" }}>
+          <p style={{ margin: 0 }}><strong>Total Active Accounts:</strong> {users.length}</p>
+          <p style={{ margin: 0 }}><strong>Total Published Posts:</strong> {posts.length}</p>
+          <p style={{ margin: 0 }}><strong>Total Active Comments:</strong> {commentsCount}</p>
+          <p style={{ margin: 0 }}><strong>Total System Notifications:</strong> {notificationsCount}</p>
+        </div>
+      </div>
+
+      {/* Content Moderation / Incoming Reports Review Workspace Node */}
+      <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
+        Reported Content Feed
+      </h2>
+      <div style={{ maxHeight: "350px", overflowY: "auto", marginBottom: "30px", paddingRight: "5px" }}>
+        {reports.length > 0 ? (
+          reports.map((report) => (
+            <div 
+              key={report.id} 
+              className="post-card" 
+              style={{ borderLeft: "4px solid #ef4444", margin: "10px 0", background: "#fef2f2" }}
+            >
+              <p style={{ margin: "0 0 4px 0", fontSize: "13px", color: "#64748b" }}>
+                <strong>Flagged By:</strong> {report.reportedBy}
+              </p>
+              <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#64748b" }}>
+                <strong>Post Author:</strong> {report.postOwner}
+              </p>
+              <p style={{ margin: "0 0 15px 0", color: "#1e293b", background: "#ffffff", padding: "10px", borderRadius: "4px", border: "1px solid #fca5a5" }}>
+                {report.content}
+              </p>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={() => handleDeletePost(report.postId)}
+                  style={{
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    padding: "6px 14px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600"
+                  }}
+                >
+                  💥 Remove Content
+                </button>
+                <button
+                  onClick={() => handleDismissReport(report.id)}
+                  style={{
+                    backgroundColor: "#64748b",
+                    color: "white",
+                    border: "none",
+                    padding: "6px 14px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600"
+                  }}
+                >
+                  ✅ Dismiss Report
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p style={{ color: "#22c55e", fontSize: "14px", fontWeight: "500" }}>🟢 All reports cleared! The moderation queue is empty.</p>
+        )}
+      </div>
+
+      {/* Content Moderation / Global Post Management Stream Node */}
+      <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
+        All Platform Posts
+      </h2>
+      <div style={{ maxHeight: "350px", overflowY: "auto", marginBottom: "30px", paddingRight: "5px" }}>
+        {posts.length > 0 ? (
+          posts.map((post) => (
+            <div key={post.id} className="post-card" style={{ borderLeft: "3px solid #64748b", margin: "10px 0" }}>
+              <h4 style={{ margin: "0 0 5px 0", color: "#475569" }}>By: {post.name}</h4>
+              <p style={{ margin: "0 0 12px 0", color: "#1e293b", fontSize: "14px" }}>{post.content}</p>
+              <button
+                className="delete-btn"
+                onClick={() => handleDeletePost(post.id)}
+                style={{
+                  backgroundColor: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600"
+                }}
+              >
+                🗑️ Delete Post
+              </button>
+            </div>
+          ))
+        ) : (
+          <p style={{ color: "#64748b", fontSize: "14px" }}>No platform posts available to manage.</p>
+        )}
+      </div>
+
+      {/* Dynamic Account Registry Mapping Stream Node */}
+      <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px" }}>User Management</h2>
+      
+      {filteredUsers.length > 0 ? (
+        filteredUsers.map((user) => (
+          <div 
+            key={user.id} 
+            className="post-card"
+            style={{
+              opacity: user.isBanned ? 0.65 : 1,
+              borderRight: user.isBanned ? "6px solid #f59e0b" : "none",
+              transition: "all 0.2s ease-in-out"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "between", alignItems: "start" }}>
+              <div style={{ flexGrow: 1 }}>
+                <h3 style={{ margin: "0 0 5px 0", display: "flex", alignItems: "center" }}>
+                  {user.name || "Anonymous User"} 
+                  {user.isBanned && (
+                    <span style={{ 
+                      color: "#d97706", 
+                      background: "#fef3c7", 
+                      fontSize: "12px", 
+                      padding: "2px 8px", 
+                      borderRadius: "12px", 
+                      marginLeft: "10px",
+                      fontWeight: "600"
+                    }}>
+                      Account Suspended
+                    </span>
+                  )}
+                </h3>
+                <p style={{ margin: "0 0 12px 0", color: "#64748b", fontSize: "14px" }}>{user.email}</p>
+              </div>
+            </div>
+            
+            {/* Direct Privilege Dropdown Element */}
+            <div style={{ margin: "12px 0", display: "flex", alignItems: "center", gap: "10px" }}>
+              <label htmlFor={`role-${user.id}`} style={{ fontWeight: "600", fontSize: "14px", color: "#475569" }}>
+                Assigned Platform Role:
+              </label>
+              <select
+                id={`role-${user.id}`}
+                value={user.role || "Freelancer"}
+                onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#ffffff",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  fontWeight: "500"
+                }}
+              >
+                <option value="Admin">Admin</option>
+                <option value="Owner">Owner</option>
+                <option value="Investor">Investor</option>
+                <option value="Freelancer">Freelancer</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: "20px", margin: "10px 0", fontSize: "13px", color: "#64748b" }}>
+              <span><strong>Followers Count:</strong> {user.followers?.length || 0}</span>
+              <span><strong>Following Count:</strong> {user.following?.length || 0}</span>
+            </div>
+
+            {/* Context Execution Interaction Wrapper Control Tray */}
+            <div style={{ display: "flex", gap: "10px", marginTop: "15px", borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+              
+              {/* Ban/Unban Security Toggle Button Component */}
+              <button
+                onClick={() => handleBanUser(user.id, !!user.isBanned)}
+                style={{
+                  backgroundColor: user.isBanned ? "#22c55e" : "#ea580c",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  fontSize: "13px"
+                }}
+              >
+                {user.isBanned ? "🔓 Reactivate Account" : "🚫 Suspend User Access"}
+              </button>
+
+              {/* Cascade Pure Deletion Execution Node */}
+              <button
+                onClick={() => handleDeleteUser(user.id, user.email)}
+                style={{
+                  backgroundColor: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  marginLeft: "auto"
+                }}
+              >
+                🗑️ Wipe Record Permanently
+              </button>
+              
+            </div>
+          </div>
+        ))
+      ) : (
+        <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0", background: "#f8fafc", borderRadius: "8px" }}>
+          No account profiles match your search criteria "{searchTerm}"
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default AdminPage;
