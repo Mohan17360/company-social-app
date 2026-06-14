@@ -1,4 +1,5 @@
 // src/pages/ChatRoomPage.jsx
+import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react"; 
 import {
@@ -17,8 +18,15 @@ import { auth, db, storage } from "../firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import EmojiPicker from "emoji-picker-react"; 
 
-function ChatRoomPage() {
-  const { userId } = useParams();
+// Function arguments structurally updated to accept wrapper properties
+function ChatRoomPage({
+  selectedUserId,
+  embedded = false,
+}) {
+  // Dynamically checking explicit pass-through states vs route configurations
+  const params = useParams();
+  const userId = selectedUserId || params.userId;
+  
   const navigate = useNavigate();
 
   const [message, setMessage] = useState("");
@@ -31,24 +39,58 @@ function ChatRoomPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State managers for audio capturing sessions (Unused audioChunks removed)
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
 
-  const bottomRef = useRef(null); 
+  const messagesEndRef = useRef(null); 
+  const emojiRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
-  // Effect block dedicated exclusively to managing active session context
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    let activeUserUid = null;
+
+    const handleBeforeUnload = async () => {
+      if (!activeUserUid) return;
+      try {
+        await updateDoc(doc(db, "users", activeUserUid), {
+          online: false,
+          lastSeen: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error("Error setting offline on unload:", error);
+      }
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUserId(user.uid);
+        activeUserUid = user.uid;
+
+        try {
+          await updateDoc(doc(db, "users", user.uid), {
+            online: true,
+          });
+        } catch (error) {
+          console.error("Error setting user online status:", error);
+        }
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      
+      if (activeUserUid) {
+        updateDoc(doc(db, "users", activeUserUid), {
+          online: false,
+          lastSeen: serverTimestamp(),
+        }).catch((error) => console.error("Error setting user offline on unmount:", error));
+      }
+    };
   }, []);
 
-  // 1. Isolated Real-time User Profile & Presence Data Sync
   useEffect(() => {
     if (!userId) return;
 
@@ -65,7 +107,6 @@ function ChatRoomPage() {
     return () => unsubscribe();
   }, [userId]);
 
-  // 2. Real-time Message Stream Sync + Automated Read Status Mutation
   useEffect(() => {
     if (!currentUserId || !userId) return;
 
@@ -77,19 +118,19 @@ function ChatRoomPage() {
           ...docSnap.data(),
         }));
 
-        // Loop through messages and auto-mark unread incoming messages as read
         msgs.forEach(async (msg) => {
           if (
             msg.receiverId === currentUserId &&
             msg.senderId === userId &&
-            msg.read === false
+            (msg.read === false || msg.seen === false)
           ) {
             try {
               await updateDoc(doc(db, "messages", msg.id), {
                 read: true,
+                seen: true, 
               });
             } catch (error) {
-              console.error("Error marking message as read:", error);
+              console.error("Error marking message as read/seen:", error);
             }
           }
         });
@@ -113,7 +154,6 @@ function ChatRoomPage() {
     return () => unsubscribe();
   }, [userId, currentUserId]); 
 
-  // Listens to the typing indicator status of the counterpart user
   useEffect(() => {
     if (!userId) return;
 
@@ -131,12 +171,33 @@ function ChatRoomPage() {
     return () => unsubscribe();
   }, [userId]);
 
-  // 3. Smooth Auto-Scroll Anchor
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({
+    messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });
   }, [messages]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        emojiRef.current &&
+        !emojiRef.current.contains(event.target)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
 
   const handleEmojiClick = (emojiData) => {
     setMessage((prev) => prev + emojiData.emoji);
@@ -170,7 +231,6 @@ function ChatRoomPage() {
     }
   };
 
-  // Step 3: Add Start Recording function
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -208,6 +268,8 @@ function ChatRoomPage() {
           audioUrl,
           createdAt: serverTimestamp(),
           read: false,
+          delivered: true, 
+          seen: false      
         });
       };
     } catch (error) {
@@ -215,7 +277,6 @@ function ChatRoomPage() {
     }
   };
 
-  // Step 4: Add Stop Recording function
   const stopRecording = () => {
     mediaRecorder?.stop();
     setIsRecording(false);
@@ -257,7 +318,8 @@ function ChatRoomPage() {
         fileName, 
         createdAt: serverTimestamp(),
         read: false,
-        delivered: true,
+        delivered: true, 
+        seen: false      
       });
 
       setMessage("");
@@ -265,79 +327,132 @@ function ChatRoomPage() {
       setSelectedFile(null); 
       setShowEmojiPicker(false); 
 
-      await setDoc(doc(db, "typing", currentUserId), {
-        typing: false,
-        receiverId: userId,
-        senderId: currentUserId,
-      });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      await deleteDoc(doc(db, "typing", `${userId}_${currentUserId}`));
 
     } catch (error) {
       alert(error.message);
     }
   };
 
+  const formatMessageDate = (timestamp) => {
+    if (!timestamp?.seconds) return "";
+
+    const messageDate = new Date(timestamp.seconds * 1000);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (messageDate.toDateString() === today.toDateString()) {
+      return "Today";
+    }
+
+    if (messageDate.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+
+    return messageDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const formatLastSeen = (timestamp) => {
+    if (!timestamp?.seconds) return "recently";
+
+    const date = new Date(timestamp.seconds * 1000);
+    const now = new Date();
+
+    const today = date.toDateString() === now.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    const time = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    if (today) {
+      return `active today at ${time}`;
+    }
+    if (isYesterday) {
+      return `active yesterday at ${time}`;
+    }
+    return `active ${date.toLocaleDateString()} at ${time}`;
+  };
+
   const isUserOnline = chatUser?.online === true;
 
   return (
-    <div className="feed-container">
-      <h1>Chat Room</h1>
-
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "20px",
-        }}
-      >
-        <button
-          className="edit-btn"
-          onClick={() => navigate(-1)}
-        >
-          ← Back
-        </button>
-
-        <button
-          className="create-btn"
-          onClick={() => window.location.reload()}
-        >
-          ↻ Refresh
-        </button>
-      </div>
-
-      {/* Header Profile Info Bar */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          marginBottom: "20px",
-        }}
-      >
-        <h3>{chatUser?.name || "Loading Profile..."}</h3>
-
-        {/* Render explicit real-time feedback when partner modifies message content */}
-        {isTyping && (
-          <span
-            style={{
-              color: "#22c55e",
-              fontSize: "14px",
-            }}
-          >
-            typing...
-          </span>
-        )}
-
-        <span
-          style={{
-            color: isUserOnline ? "#22c55e" : "#ef4444",
+    <div className="instagram-chat-layout">
+      
+      <div className="instagram-chat-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+        <div className="chat-user-info" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          
+          <div className="chat-avatar" style={{
+            width: "45px",
+            height: "45px",
+            borderRadius: "50%",
+            backgroundColor: "#2563eb",
+            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             fontWeight: "bold",
-          }}
-        >
-          {isUserOnline ? "🟢 Online" : "🔴 Offline"}
-        </span>
+            fontSize: "18px"
+          }}>
+            {chatUser?.name ? chatUser.name.charAt(0).toUpperCase() : "?"}
+          </div>
+
+          <div>
+            <h2 style={{ margin: 0, fontSize: "1.3rem", display: "flex", alignItems: "center", gap: "8px" }}>
+              {chatUser?.name || "Loading Profile..."}
+              {isTyping && (
+                <span style={{ color: "#22c55e", fontSize: "13px", fontWeight: "normal", fontStyle: "italic" }}>
+                  typing...
+                </span>
+              )}
+            </h2>
+
+            {isUserOnline ? (
+              <p style={{ color: "#22c55e", margin: 0, fontSize: "14px" }}>
+                ● Active now
+              </p>
+            ) : (
+              <p style={{ color: "#94a3b8", margin: 0, fontSize: "14px" }}>
+                {formatLastSeen(chatUser?.lastSeen)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div className="chat-header-actions" style={{ display: "flex", gap: "10px" }}>
+            <button className="header-icon-btn" style={{ border: "none", background: "none", fontSize: "18px", cursor: "pointer", color: "white" }}>📞</button>
+            <button className="header-icon-btn" style={{ border: "none", background: "none", fontSize: "18px", cursor: "pointer", color: "white" }}>🎥</button>
+            <button className="header-icon-btn" style={{ border: "none", background: "none", fontSize: "18px", cursor: "pointer", color: "white" }}>ℹ️</button>
+          </div>
+          <div style={{ height: "20px", width: "1px", background: "#334155", margin: "0 4px" }} />
+          
+          {/* Embedded prop check blocks ungraceful mobile layouts from spilling on flat desktop frames */}
+          {!embedded && (
+            <button className="edit-btn" onClick={() => navigate(-1)}>
+              ← Back
+            </button>
+          )}
+          
+          {/* Hot-reload component checks bypass processing */}
+          {!embedded && (
+            <button className="create-btn" onClick={() => window.location.reload()}>
+              ↻ Refresh
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Sticky Container housing Search Actions */}
       <div
         style={{
           position: "sticky",
@@ -363,65 +478,75 @@ function ChatRoomPage() {
         />
       </div>
 
-      {/* Scrollable Message Box Display */}
-      <div 
-        className="post-card"
-        style={{
-          maxHeight: "400px",
-          overflowY: "auto",
-        }}
-      >
-        <h3>Messages</h3>
+      <div className="instagram-message-area" style={{ height: "calc(100vh - 220px)", overflowY: "auto", paddingRight: "5px" }}>
+        <div className="chat-messages">
+          {messages
+            .filter((msg) =>
+              !searchTerm ? true : msg.text?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .map((msg, index, arr) => {
+              const isMine = msg.senderId === currentUserId;
+              const currentDate = formatMessageDate(msg.createdAt);
+              
+              const prevMsg = index > 0 ? arr[index - 1] : null;
+              const prevDate = prevMsg ? formatMessageDate(prevMsg.createdAt) : "";
+              const showDate = currentDate !== prevDate;
 
-        {messages
-          .filter((msg) =>
-            !searchTerm ? true : msg.text?.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-          .map((msg) => {
-            const isMine = msg.senderId === currentUserId;
+              return (
+                <React.Fragment key={msg.id}>
+                  {showDate && currentDate && (
+                    <div style={{ textAlign: "center", margin: "15px 0" }}>
+                      <span
+                        style={{
+                          background: "#1e293b",
+                          color: "#cbd5e1",
+                          padding: "6px 14px",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: "500"
+                        }}
+                      >
+                        {currentDate}
+                      </span>
+                    </div>
+                  )}
 
-            return (
-              <div
-                key={msg.id}
-                style={{
-                  display: "flex",
-                  justifyContent: isMine ? "flex-end" : "flex-start",
-                  marginBottom: "20px",
-                }}
-              >
-                <div style={{ position: "relative" }}>
                   <div
                     style={{
-                      background: isMine ? "#2563eb" : "#475569",
-                      color: "white",
-                      padding: "10px 15px",
-                      borderRadius: "12px",
-                      maxWidth: "100%", 
-                      wordBreak: "break-word",
+                      display: "flex",
+                      justifyContent: isMine ? "flex-end" : "flex-start",
+                      marginBottom: "8px",
                     }}
                   >
-                    <>
+                    <div className={isMine ? "whatsapp-sent" : "whatsapp-received"} style={{ position: "relative", maxWidth: "70%" }}>
+                      
+                      {!isMine && msg.senderName && (
+                        <div className="sender-name" style={{ fontWeight: "bold", fontSize: "12px", color: "#34d399", marginBottom: "4px" }}>
+                          {msg.senderName}
+                        </div>
+                      )}
+
                       {msg.imageUrl && (
                         <img
                           src={msg.imageUrl}
                           alt="chat"
                           style={{
-                            maxWidth: "250px",
-                            borderRadius: "10px",
-                            marginBottom: "8px",
+                            maxWidth: "100%",
+                            borderRadius: "8px",
+                            marginBottom: "6px",
                             display: "block"
                           }}
                         />
                       )}
 
                       {msg.fileUrl && (
-                        <div style={{ marginTop: "8px", marginBottom: "8px" }}>
+                        <div style={{ marginTop: "4px", marginBottom: "6px" }}>
                           <a
                             href={msg.fileUrl}
                             target="_blank"
                             rel="noreferrer"
                             style={{
-                              color: "#fff",
+                              color: "#38bdf8",
                               textDecoration: "underline",
                               fontSize: "14px",
                               display: "inline-flex",
@@ -429,228 +554,160 @@ function ChatRoomPage() {
                               gap: "4px"
                             }}
                           >
-                            📎 {msg.fileName || "Download Attached File"}
+                            📎 {msg.fileName || "Download Document"}
                           </a>
                         </div>
                       )}
 
-                      {/* Render HTML5 Audio playback anchor inline when present */}
                       {msg.audioUrl && (
-                        <div style={{ marginTop: "5px", marginBottom: "5px" }}>
+                        <div style={{ marginTop: "4px", marginBottom: "6px" }}>
                           <audio controls style={{ maxWidth: "100%" }}>
                             <source src={msg.audioUrl} type="audio/webm" />
                           </audio>
                         </div>
                       )}
 
-                      {msg.text && (
-                        <div
-                          style={{
-                            fontStyle: msg.deleted ? "italic" : "normal",
-                            opacity: msg.deleted ? 0.7 : 1,
-                          }}
-                        >
-                          {msg.text}
+                      <div style={{ fontStyle: msg.deleted ? "italic" : "normal", opacity: msg.deleted ? 0.7 : 1 }}>
+                        {msg.text}
+                      </div>
+
+                      <div className="message-meta" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px", fontSize: "10px", opacity: 0.6, marginTop: "4px", textAlign: "right" }}>
+                        {msg.createdAt?.seconds
+                          ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                        {isMine && (msg.seen ? " ✓✓" : " ✓")}
+                      </div>
+
+                      {!msg.deleted && (
+                        <div style={{ display: "flex", gap: "3px", marginTop: "4px", justifyContent: isMine ? "flex-end" : "flex-start" }}>
+                          <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px" }} onClick={() => handleReaction(msg.id, "👍")}>👍</button>
+                          <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px" }} onClick={() => handleReaction(msg.id, "❤️")}>❤️</button>
+                          <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px" }} onClick={() => handleReaction(msg.id, "😂")}>😂</button>
                         </div>
                       )}
-                    </>
 
-                    {isMine && (
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          marginTop: "4px",
-                          textAlign: "right",
-                        }}
-                      >
-                        {msg.read ? "✓✓" : "✓"}
-                      </div>
-                    )}
+                      {msg.reactions?.length > 0 && (
+                        <div style={{ display: "flex", gap: "2px", background: "rgba(255,255,255,0.1)", padding: "2px 6px", borderRadius: "10px", width: "fit-content", marginTop: "3px" }}>
+                          {msg.reactions.map((r, i) => <span key={i} style={{ fontSize: "12px" }}>{r.emoji}</span>)}
+                        </div>
+                      )}
 
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        opacity: 0.7,
-                        marginTop: "5px",
-                        textAlign: "right",
-                      }}
-                    >
-                      {msg.createdAt?.seconds
-                        ? new Date(msg.createdAt.seconds * 1000).toLocaleString()
-                        : ""}
+                      {isMine && !msg.deleted && (
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", marginTop: "4px" }}>
+                          <button onClick={() => handleDeleteMessage(msg.id, false)} style={{ fontSize: "9px", background: "#ef4444", color: "white", border: "none", borderRadius: "3px", cursor: "pointer", padding: "2px 5px" }}>
+                            Delete For Me
+                          </button>
+                          <button onClick={() => handleDeleteMessage(msg.id, true)} style={{ fontSize: "9px", background: "#f59e0b", color: "white", border: "none", borderRadius: "3px", cursor: "pointer", padding: "2px 5px" }}>
+                            Delete For Everyone
+                          </button>
+                        </div>
+                      )}
+
                     </div>
                   </div>
+                </React.Fragment>
+              );
+            })}
 
-                  {!msg.deleted && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "5px",
-                        marginTop: "5px",
-                        justifyContent: isMine ? "flex-end" : "flex-start",
-                      }}
-                    >
-                      <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "14px" }} onClick={() => handleReaction(msg.id, "👍")}>👍</button>
-                      <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "14px" }} onClick={() => handleReaction(msg.id, "❤️")}>❤️</button>
-                      <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "14px" }} onClick={() => handleReaction(msg.id, "😂")}>😂</button>
-                      <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "14px" }} onClick={() => handleReaction(msg.id, "😮")}>😮</button>
-                      <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "14px" }} onClick={() => handleReaction(msg.id, "🎉")}>🎉</button>
-                    </div>
-                  )}
-
-                  {msg.reactions?.length > 0 && (
-                    <div
-                      style={{
-                        marginTop: "5px",
-                        fontSize: "16px",
-                        textAlign: isMine ? "right" : "left",
-                        display: "flex",
-                        gap: "3px",
-                        justifyContent: isMine ? "flex-end" : "flex-start",
-                        background: "rgba(0,0,0,0.05)",
-                        padding: "4px 8px",
-                        borderRadius: "20px",
-                        width: "fit-content"
-                      }}
-                    >
-                      {msg.reactions.map((reaction, index) => (
-                        <span key={index} title={`Reacted by user`}>
-                          {reaction.emoji}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {isMine && !msg.deleted && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "8px",
-                        justifyContent: "flex-end",
-                        marginTop: "4px",
-                    }}
-                  >
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id, false)}
-                      style={{
-                        fontSize: "11px",
-                        background: "#ef4444",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        padding: "4px 8px"
-                      }}
-                    >
-                      Delete For Me
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id, true)}
-                      style={{
-                        fontSize: "11px",
-                        background: "#f59e0b",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        padding: "4px 8px"
-                      }}
-                    >
-                      Delete For Everyone
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        <div ref={bottomRef}></div>
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Message Text Input Area */}
-      <div className="post-card">
-        <button
-          className="edit-btn"
-          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          style={{ marginBottom: "8px", fontSize: "16px", cursor: "pointer" }}
-        >
-          😊 Toggle Emojis
-        </button>
-
+      <div className="instagram-chat-input-container" style={{ position: "relative" }}>
         {showEmojiPicker && (
-          <div style={{ marginBottom: "12px" }}>
+          <div ref={emojiRef} style={{ marginBottom: "12px", position: "absolute", bottom: "80px", zIndex: 200 }}>
             <EmojiPicker onEmojiClick={handleEmojiClick} />
           </div>
         )}
 
-        <textarea
-          placeholder="Type message..."
-          value={message}
-          onChange={async (e) => {
-            setMessage(e.target.value);
+        <div className="chat-input-bar" style={{ display: "flex", alignItems: "center", gap: "10px", background: "#1e293b", padding: "8px 12px", borderRadius: "25px" }}>
+          <button 
+            type="button"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
+            style={{ border: "none", background: "none", fontSize: "20px", cursor: "pointer", padding: "4px" }}
+          >
+            😀
+          </button>
 
-            if (!currentUserId) return;
+          <label style={{ cursor: "pointer", fontSize: "20px", padding: "4px", display: "inline-block" }}>
+            📎
+            <input 
+              type="file" 
+              onChange={(e) => setSelectedFile(e.target.files[0])} 
+              style={{ display: "none" }} 
+            />
+          </label>
 
-            await setDoc(doc(db, "typing", currentUserId), {
-              typing: e.target.value.length > 0,
-              receiverId: userId,
-              senderId: currentUserId,
-            });
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-        />
-        <br />
-        <br />
+          <input
+            type="text"
+            placeholder={selectedFile ? `📎 ${selectedFile.name}` : "Type a message"}
+            value={message}
+            style={{ flex: 1, background: "none", border: "none", color: "white", outline: "none", fontSize: "15px", padding: "6px 0" }}
+            onChange={async (e) => {
+              const currentInputValue = e.target.value;
+              setMessage(currentInputValue);
+              
+              if (!currentUserId) return;
 
-        <label style={{ display: "block", fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>
-          Upload Image:
-        </label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setSelectedImage(e.target.files[0])}
-          style={{ marginBottom: "12px", display: "block" }}
-        />
+              if (!currentInputValue.trim()) {
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                await deleteDoc(doc(db, "typing", `${userId}_${currentUserId}`));
+                return;
+              }
 
-        <label style={{ display: "block", fontSize: "12px", color: "#64748b", marginBottom: "4px" }}>
-          Upload Document/File:
-        </label>
-        <input
-          type="file"
-          onChange={(e) => setSelectedFile(e.target.files[0])}
-          style={{ marginBottom: "15px", display: "block" }}
-        />
+              await setDoc(doc(db, "typing", `${userId}_${currentUserId}`), {
+                receiverId: userId,
+                senderId: currentUserId,
+                name: auth.currentUser?.displayName || chatUser?.name || "User",
+                typing: true,
+              });
 
-        {/* MediaRecorder button layout row triggers */}
-        <div style={{ marginBottom: "15px" }}>
-          {!isRecording ? (
-            <button
-              className="edit-btn"
-              onClick={startRecording}
-              style={{ cursor: "pointer" }}
-            >
-              🎤 Start Recording
-            </button>
-          ) : (
-            <button
-              className="delete-btn"
-              onClick={stopRecording}
-              style={{ background: "#ef4444", color: "#fff", cursor: "pointer" }}
-            >
-              ⏹ Stop Recording
-            </button>
-          )}
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+              typingTimeoutRef.current = setTimeout(async () => {
+                await deleteDoc(doc(db, "typing", `${userId}_${currentUserId}`));
+              }, 2000);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+
+          <button
+            onClick={handleSend}
+            style={{ background: "#2563eb", color: "white", border: "none", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "16px" }}
+          >
+            ➤
+          </button>
         </div>
 
-        <button className="create-btn" onClick={handleSend}>
-          Send Message
-        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", padding: "0 8px" }}>
+          <div>
+            <label style={{ fontSize: "12px", color: "#64748b", marginRight: "6px", cursor: "pointer" }}>
+              📸 Attach Image
+              <input type="file" accept="image/*" onChange={(e) => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
+            </label>
+            {selectedImage && <span style={{ fontSize: "11px", color: "#22c55e" }}>✓ {selectedImage.name}</span>}
+          </div>
+
+          <div>
+            {!isRecording ? (
+              <button onClick={startRecording} style={{ background: "none", border: "none", color: "#38bdf8", cursor: "pointer", fontSize: "13px" }}>
+                🎤 Record Voice
+              </button>
+            ) : (
+              <button onClick={stopRecording} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
+                ⏹ Stop ({isRecording ? "Recording..." : ""})
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

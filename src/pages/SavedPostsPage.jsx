@@ -1,3 +1,4 @@
+// src/pages/SavedPostsPage.jsx
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -5,36 +6,48 @@ import {
   where,
   onSnapshot,
 } from "firebase/firestore";
+// Added explicit onAuthStateChanged import block
 import { auth, db } from "../firebase";
-// Step A: Verified/Added the useNavigate import
+import { onAuthStateChanged } from "firebase/auth";
+// Verified/Added the useNavigate import
 import { useNavigate } from "react-router-dom";
 
 function SavedPostsPage() {
   const [savedPosts, setSavedPosts] = useState([]);
   
-  // Step B: Initialized the navigate hook inside the component
+  // Initialized the navigate hook inside the component
   const navigate = useNavigate();
 
+  // Integrated the multi-layer synchronized lifecycle listener block
   useEffect(() => {
-    const user = auth.currentUser;
+    let unsubscribePosts = null;
 
-    if (!user) return;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setSavedPosts([]);
+        if (unsubscribePosts) unsubscribePosts();
+        return;
+      }
 
-    const q = query(
-      collection(db, "savedPosts"),
-      where("userEmail", "==", user.email)
-    );
+      const q = query(
+        collection(db, "savedPosts"),
+        where("userEmail", "==", user.email)
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      unsubscribePosts = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-      setSavedPosts(data);
+        setSavedPosts(data);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribePosts) unsubscribePosts();
+    };
   }, []);
 
   return (
@@ -42,7 +55,7 @@ function SavedPostsPage() {
       {/* Target heading matched style class name */}
       <h1 className="feed-title">Saved Posts</h1>
 
-      {/* Step C: Injected Back and Refresh layout markup directly beneath the header */}
+      {/* Injected Back and Refresh layout markup directly beneath the header */}
       <div
         style={{
           display: "flex",
@@ -65,22 +78,33 @@ function SavedPostsPage() {
         </button>
       </div>
 
-      {savedPosts.map((post) => (
-        <div key={post.id} className="post-card">
-          <p>{post.content}</p>
-
-          {post.image && (
-            <img
-              src={post.image}
-              alt=""
-              style={{
-                width: "100%",
-                borderRadius: "10px",
-              }}
-            />
-          )}
+      {/* Structured WhatsApp Style Conditional Empty State Resolution Engine */}
+      {savedPosts.length === 0 ? (
+        <div className="post-card" style={{ textAlign: "center", padding: "30px 20px" }}>
+          <h3 style={{ marginBottom: "8px" }}>No Saved Posts Yet</h3>
+          <p style={{ color: "#94a3b8", fontSize: "14px", margin: 0 }}>
+            Save posts from the feed and they will appear here.
+          </p>
         </div>
-      ))}
+      ) : (
+        savedPosts.map((post) => (
+          <div key={post.id} className="post-card">
+            <p>{post.content}</p>
+
+            {post.image && (
+              <img
+                src={post.image}
+                alt=""
+                style={{
+                  width: "100%",
+                  borderRadius: "10px",
+                  marginTop: "10px"
+                }}
+              />
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }
