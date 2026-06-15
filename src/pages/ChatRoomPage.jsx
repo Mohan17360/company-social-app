@@ -25,9 +25,13 @@ function ChatRoomPage({
 }) {
   // Dynamically checking explicit pass-through states vs route configurations
   const params = useParams();
-  const userId = selectedUserId || params.userId;
+  const userId = embedded
+    ? selectedUserId
+    : params.userId;
   
   const navigate = useNavigate();
+  // FIXED: Injected isEmbeddedMode validation tracker rule underneath initialization
+  const isEmbeddedMode = embedded === true;
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -386,8 +390,31 @@ function ChatRoomPage({
 
   const isUserOnline = chatUser?.online === true;
 
+  // FIXED: Injected dynamic empty conversation guard clause
+  if (!userId) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+          color: "white",
+        }}
+      >
+        Select a conversation
+      </div>
+    );
+  }
+
   return (
-    <div className="instagram-chat-layout">
+    // FIXED: Adjusted height handling conditional switch configuration properties
+    <div
+      className="instagram-chat-layout"
+      style={{
+        height: isEmbeddedMode ? "100%" : "auto",
+      }}
+    >
       
       <div className="instagram-chat-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
         <div className="chat-user-info" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -437,7 +464,7 @@ function ChatRoomPage({
           </div>
           <div style={{ height: "20px", width: "1px", background: "#334155", margin: "0 4px" }} />
           
-          {/* Embedded prop check blocks ungraceful mobile layouts from spilling on flat desktop frames */}
+          {/* FIXED: Explicitly wrapped native button container inside the embedded prop tracker gate */}
           {!embedded && (
             <button className="edit-btn" onClick={() => navigate(-1)}>
               ← Back
@@ -478,7 +505,17 @@ function ChatRoomPage({
         />
       </div>
 
-      <div className="instagram-message-area" style={{ height: "calc(100vh - 220px)", overflowY: "auto", paddingRight: "5px" }}>
+      {/* FIXED: Embedded context layout tracking toggle adjustments */}
+      <div
+        className="instagram-message-area"
+        style={{
+          height: isEmbeddedMode
+            ? "calc(100vh - 250px)"
+            : "calc(100vh - 220px)",
+          overflowY: "auto",
+          paddingRight: "5px",
+        }}
+      >
         <div className="chat-messages">
           {messages
             .filter((msg) =>

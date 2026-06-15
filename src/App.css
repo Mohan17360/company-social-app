@@ -41,8 +41,10 @@ button:hover {
    2. CORE CONTAINERS & LAYOUTS 
    ========================================== */
 .profile-page {
-  max-width: 1000px;
-  margin: auto;
+  max-width: 935px; /* Standard Instagram layout width */
+  margin: 0 auto;
+  width: 100%;
+  flex-grow: 1; /* Sidebar ke bache hue area ko gracefully fill karne ke liye */
 }
 
 .feed-container {
@@ -914,12 +916,120 @@ button:hover {
 
 
 /* ==========================================
+   10. ADDED CHAT COMPONENT STEPS & MODIFIERS
+   ========================================== */
+.instagram-chat-layout {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 20px);
+}
+
+.instagram-chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #000814;
+  border-bottom: 1px solid #334155;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-header-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.header-icon-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.instagram-message-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.instagram-chat-input-container {
+  position: sticky;
+  bottom: 0;
+  background: #000814;
+  border-top: 1px solid #334155;
+  padding: 15px;
+}
+
+/* Group Custom Extensions */
+.group-chat-header {
+  box-shadow: 0 8px 25px rgba(0,0,0,.25);
+}
+
+.group-chat-header h2 {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.group-chat-header p {
+  font-size: 14px;
+}
+
+
+/* ==========================================
+   11. APPLAYOUT SPECIFIC SIDEBAR
+   ========================================== */
+.app-sidebar {
+  width: 260px;
+  height: 100vh;
+  background: #020617;
+  border-right: 1px solid #1e293b;
+  padding: 20px;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+}
+
+.app-sidebar h2 {
+  color: white;
+  margin-bottom: 30px;
+}
+
+.app-sidebar button {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  color: white;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.app-sidebar button:hover {
+  background: #1e293b;
+}
+
+
+/* ==========================================
    9. MEDIA QUERIES (MOBILE RESPONSIVENESS) 
    ========================================== */
 @media (max-width: 768px) {
   .feed-main-content {
     margin-left: 0 !important; /* Clears sidebar offsets completely on mobile */
     padding: 12px;
+  }
+
+  .profile-page {
+    max-width: 100%;
+    padding: 10px !important;
+  }
+  
+  .app-sidebar {
+    display: none; /* Hide standard desktop sidebar on mobile views */
   }
 
   .post-card {
@@ -1031,51 +1141,12 @@ button:hover {
   }
 }
 
-
-/* ==========================================
-   10. ADDED CHAT COMPONENT STEPS (4, 6, 8)
-   ========================================== */
-.instagram-chat-layout {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 20px);
-}
-
-.instagram-chat-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #000814;
-  border-bottom: 1px solid #334155;
-  padding: 15px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.chat-header-actions {
-  display: flex;
-  gap: 15px;
-}
-
-.header-icon-btn {
-  background: none;
-  border: none;
+.sidebar-badge {
+  background: #ef4444;
   color: white;
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.instagram-message-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.instagram-chat-input-container {
-  position: sticky;
-  bottom: 0;
-  background: #000814;
-  border-top: 1px solid #334155;
-  padding: 15px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  margin-left: 8px;
+  font-weight: 700;
 }

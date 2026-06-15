@@ -1,105 +1,124 @@
+// src/pages/NotificationsPage.jsx
 import { useEffect, useState } from "react";
 import {
   collection,
   query,
   where,
   onSnapshot,
-  updateDoc,
   doc,
+  writeBatch,
 } from "firebase/firestore";
-import {
-  onAuthStateChanged,
-} from "firebase/auth";
-
+import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../firebase";
-// Step A: Verified/Added the useNavigate import
 import { useNavigate } from "react-router-dom";
+import AppLayout from "../components/AppLayout";
 
 function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
-  
-  // Step B: Initialized the navigate hook inside the component
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(
-      auth,
-      (user) => {
-        if (!user) return;
+    let unsubscribeNotifications = null;
+    let unsubscribeFallback = null;
 
-        const q = query(
-          collection(db, "notifications"),
-          where("userEmail", "==", user.email)
-        );
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) return;
 
-        const unsubscribeNotifications = onSnapshot(
-          q,
-          async (snapshot) => {
-            const data = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
+      let primaryDocs = [];
+      let fallbackDocs = [];
 
-            for (const item of data) {
-              if (!item.read) {
-                await updateDoc(
-                  doc(db, "notifications", item.id),
-                  {
-                    read: true,
-                  }
-                );
-              }
-            }
+      const mergeAndProcess = async () => {
+        const allDocsMap = new Map();
 
-            setNotifications(data.reverse());
+        primaryDocs.forEach((d) => allDocsMap.set(d.id, d));
+        fallbackDocs.forEach((d) => {
+          if (!allDocsMap.has(d.id)) {
+            allDocsMap.set(d.id, d);
           }
-        );
+        });
 
-        return () => unsubscribeNotifications();
-      }
-    );
+        const combinedData = Array.from(allDocsMap.values());
 
-    return () => unsubscribeAuth();
+        const sortedData = combinedData.sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
+
+        setNotifications(sortedData);
+
+        const unreadDocs = sortedData.filter((item) => !item.read);
+        if (unreadDocs.length > 0) {
+          const batch = writeBatch(db);
+          unreadDocs.forEach((item) => {
+            const docRef = doc(db, "notifications", item.id);
+            batch.update(docRef, { read: true });
+          });
+          try {
+            await batch.commit();
+          } catch (err) {
+            console.error("Error executing auto-read batch process:", err);
+          }
+        }
+      };
+
+      const q = query(
+        collection(db, "notifications"),
+        where("receiverEmail", "==", user.email)
+      );
+
+      unsubscribeNotifications = onSnapshot(q, (snapshot) => {
+        primaryDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        mergeAndProcess();
+      }, (err) => console.error("Primary notification stream failed:", err));
+
+      const fallbackQ = query(
+        collection(db, "notifications"),
+        where("userEmail", "==", user.email)
+      );
+
+      unsubscribeFallback = onSnapshot(fallbackQ, (snapshot) => {
+        fallbackDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        mergeAndProcess();
+      }, (err) => console.error("Fallback notification stream failed:", err));
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeNotifications) unsubscribeNotifications();
+      if (unsubscribeFallback) unsubscribeFallback();
+    };
   }, []);
 
   return (
-    <div className="feed-container">
-      {/* Target heading matched style class name */}
-      <h1 className="feed-title">Notifications</h1>
+    <AppLayout>
+      <div className="feed-container">
+        <h1 className="feed-title">Notifications</h1>
 
-      {/* Step C: Injected Back and Refresh layout markup directly beneath the header */}
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "20px",
-        }}
-      >
-        <button
-          className="edit-btn"
-          onClick={() => navigate(-1)}
-        >
-          ← Back
-        </button>
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <button className="edit-btn" onClick={() => navigate(-1)}>
+            ← Back
+          </button>
+          <button className="create-btn" onClick={() => window.location.reload()}>
+            ↻ Refresh
+          </button>
+        </div>
 
-        <button
-          className="create-btn"
-          onClick={() => window.location.reload()}
-        >
-          ↻ Refresh
-        </button>
+        {notifications.length === 0 ? (
+          <p style={{ color: "#94a3b8", textAlign: "center", marginTop: "20px" }}>
+            No notifications
+          </p>
+        ) : (
+          notifications.map((item) => (
+            <div key={item.id} className="post-card">
+              <p style={{ margin: 0, fontSize: "15px", lineHeight: "1.6" }}>
+                {item.message || item.text || "New updates received."}
+              </p>
+            </div>
+          ))
+        )}
       </div>
-
-      {notifications.length === 0 ? (
-        <p>No notifications</p>
-      ) : (
-        notifications.map((item) => (
-          <div key={item.id} className="post-card">
-            <p>{item.message}</p>
-          </div>
-        ))
-      )}
-    </div>
+    </AppLayout>
   );
 }
 

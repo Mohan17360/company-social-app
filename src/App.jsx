@@ -19,6 +19,7 @@ import ChatRoomPage from "./pages/ChatRoomPage";
 import GroupsPage from "./pages/GroupsPage";
 import GroupChatPage from "./pages/GroupChatPage";
 import MaintenanceGuard from "./components/MaintenanceGuard";
+import SearchPage from "./pages/SearchPage";
 
 function App() {
   // Global presence observer effect
@@ -59,6 +60,7 @@ function App() {
         <Route path="/chat" element={<MaintenanceGuard><ChatPage /></MaintenanceGuard>} />
         <Route path="/chat/:userId" element={<MaintenanceGuard><ChatRoomPage /></MaintenanceGuard>} />
         <Route path="/groups" element={<MaintenanceGuard><GroupsPage /></MaintenanceGuard>} />
+        <Route path="/search" element={<MaintenanceGuard><SearchPage /></MaintenanceGuard>} />
       </Routes>
     </BrowserRouter>
   );

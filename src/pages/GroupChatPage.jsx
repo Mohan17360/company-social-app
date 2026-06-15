@@ -8,18 +8,24 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
   arrayRemove,
   getDoc,
   query,
   where,
-  getDocs
+  getDocs,
+  writeBatch
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import AppLayout from "../components/AppLayout";
 
-function GroupChatPage() {
-  const { groupId } = useParams();
+function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
+  const params = useParams();
   const navigate = useNavigate();
+
+  // Unified dynamic parameter selection routing boundary
+  const groupId = embedded ? embeddedGroupId : params.groupId;
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -30,40 +36,59 @@ function GroupChatPage() {
   const [users, setUsers] = useState([]);
   const [searchUser, setSearchUser] = useState("");
 
+  // CORRECTION: Set components cleanly collapsed by default for Discord/WhatsApp flow
   const [showMembers, setShowMembers] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); 
+  const [groupImage, setGroupImage] = useState(null);
 
   const bottomRef = useRef(null);
 
-  // Automatically mark relevant unread notifications as read upon access
+  // Automatically mark relevant unread notifications as read using batch writes
   useEffect(() => {
     const markNotificationsAsRead = async () => {
-      if (!auth.currentUser?.email) return;
+      if (!auth.currentUser?.email || !groupId) return;
 
-      const q = query(
+      const q1 = query(
+        collection(db, "notifications"),
+        where("receiverEmail", "==", auth.currentUser.email),
+        where("groupId", "==", groupId),
+        where("read", "==", false)
+      );
+
+      const q2 = query(
         collection(db, "notifications"),
         where("userEmail", "==", auth.currentUser.email),
         where("groupId", "==", groupId),
         where("read", "==", false)
       );
 
-      const snapshot = await getDocs(q);
+      try {
+        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+        const combinedDocs = [...snap1.docs, ...snap2.docs];
 
-      snapshot.forEach(async (notification) => {
-        await updateDoc(
-          doc(db, "notifications", notification.id),
-          {
-            read: true,
-          }
-        );
-      });
+        if (combinedDocs.length > 0) {
+          const batch = writeBatch(db);
+          combinedDocs.forEach((notification) => {
+            const docRef = doc(db, "notifications", notification.id);
+            batch.update(docRef, { read: true });
+          });
+          await batch.commit();
+        }
+      } catch (err) {
+        console.error("Error clearing group unread status badges:", err);
+      }
     };
 
-    markNotificationsAsRead();
-  }, [groupId]);
+    if (hasAccess) {
+      markNotificationsAsRead();
+    }
+  }, [groupId, hasAccess]);
 
   // Real-time Access Control Guard Layer
   useEffect(() => {
+    console.log("ACTIVE GROUP ID IN SOURCE:", groupId);
+
     if (!groupId) return;
 
     const unsubscribeGroup = onSnapshot(
@@ -95,7 +120,7 @@ function GroupChatPage() {
 
   // Real-time group message stream listener
   useEffect(() => {
-    if (!hasAccess) return;
+    if (!hasAccess || !groupId) return;
 
     const unsubscribeMessages = onSnapshot(
       collection(db, "groupMessages"),
@@ -143,6 +168,7 @@ function GroupChatPage() {
     });
   }, [messages]);
 
+  // UPDATED: Now appends a document invite notification for the added member
   const handleAddMember = async (memberId) => {
     try {
       await updateDoc(
@@ -151,6 +177,36 @@ function GroupChatPage() {
           members: arrayUnion(memberId),
         }
       );
+
+      const groupSnap = await getDoc(
+        doc(db, "groups", groupId)
+      );
+
+      const userSnap = await getDoc(
+        doc(db, "users", memberId)
+      );
+
+      if (
+        groupSnap.exists() &&
+        userSnap.exists()
+      ) {
+        const groupData = groupSnap.data();
+        const userData = userSnap.data();
+
+        await addDoc(
+          collection(db, "notifications"),
+          {
+            receiverEmail: userData.email,
+            userEmail: userData.email,
+            groupId,
+            groupName: groupData.name,
+            message: `You were added to group "${groupData.name}"`,
+            read: false,
+            createdAt: serverTimestamp(),
+          }
+        );
+      }
+
       alert("Member Added");
     } catch (error) {
       alert(error.message);
@@ -159,12 +215,9 @@ function GroupChatPage() {
 
   const handleRemoveMember = async (memberId) => {
     try {
-      await updateDoc(
-        doc(db, "groups", groupId),
-        {
-          members: arrayRemove(memberId),
-        }
-      );
+      await updateDoc(doc(db, "groups", groupId), {
+        members: arrayRemove(memberId),
+      });
       alert("Member Removed");
     } catch (error) {
       alert(error.message);
@@ -173,18 +226,66 @@ function GroupChatPage() {
 
   const handleLeaveGroup = async () => {
     try {
-      await updateDoc(
-        doc(db, "groups", groupId),
+      await updateDoc(doc(db, "groups", groupId), {
+        members: arrayRemove(auth.currentUser.uid),
+      });
+      alert("You left the group");
+      navigate("/groups");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    const confirmDelete = window.confirm(
+      "Delete this group permanently?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(
+        doc(db, "groups", groupId)
+      );
+
+      alert("Group Deleted");
+
+      navigate("/groups");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const uploadGroupPhoto = async () => {
+    if (!groupImage) return;
+
+    try {
+      const formData = new FormData();
+
+      formData.append("file", groupImage);
+      formData.append(
+        "upload_preset",
+        "companysocial"
+      );
+
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/doocnue5h/image/upload",
         {
-          members: arrayRemove(
-            auth.currentUser.uid
-          ),
+          method: "POST",
+          body: formData,
         }
       );
 
-      alert("You left the group");
+      const data = await response.json();
 
-      navigate("/groups");
+      await updateDoc(
+        doc(db, "groups", groupId),
+        {
+          photo: data.secure_url,
+        }
+      );
+
+      alert("Group photo updated");
     } catch (error) {
       alert(error.message);
     }
@@ -204,36 +305,25 @@ function GroupChatPage() {
         createdAt: serverTimestamp(),
       });
 
-      const groupSnap = await getDoc(
-        doc(db, "groups", groupId)
-      );
-
+      const groupSnap = await getDoc(doc(db, "groups", groupId));
       const groupInfo = groupSnap.data();
 
       for (const memberId of groupInfo.members) {
-        if (
-          memberId !== auth.currentUser.uid
-        ) {
-          const userSnap = await getDoc(
-            doc(db, "users", memberId)
-          );
+        if (memberId !== auth.currentUser.uid) {
+          const userSnap = await getDoc(doc(db, "users", memberId));
 
           if (userSnap.exists()) {
             const userData = userSnap.data();
 
-            await addDoc(
-              collection(db, "notifications"),
-              {
-                userEmail: userData.email,
-                groupId: groupId,
-                groupName: groupInfo.name,
-                message: `${
-                  currentUserProfile?.name || "Someone"
-                } sent a message`,
-                read: false,
-                createdAt: serverTimestamp(),
-              }
-            );
+            await addDoc(collection(db, "notifications"), {
+              userEmail: userData.email,
+              receiverEmail: userData.email,
+              groupId: groupId,
+              groupName: groupInfo.name,
+              message: `${currentUserProfile?.name || "Someone"} sent a message in ${groupInfo.name}`,
+              read: false,
+              createdAt: serverTimestamp(),
+            });
           }
         }
       }
@@ -244,153 +334,150 @@ function GroupChatPage() {
     }
   };
 
-  if (isCheckingAccess) {
-    return (
-      <div className="feed-container">
-        <p style={{ textAlign: "center", color: "#64748b" }}>Verifying access status...</p>
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <div className="feed-container">
-        <div className="post-card" style={{ textAlign: "center", padding: "30px" }}>
-          <h2 style={{ color: "#ef4444" }}>🔒 Access Denied</h2>
-          <p style={{ color: "#64748b", margin: "15px 0" }}>
-            You are not a member of this private group chat segment.
-          </p>
-          <button className="create-btn" onClick={() => navigate("/groups")}>
-            Return to Groups
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="feed-container">
-      <img
-        src={groupData?.photo || "https://via.placeholder.com/100"}
-        alt="Group"
-        style={{
-          width: "100px",
-          height: "100px",
-          borderRadius: "50%",
-          objectFit: "cover",
-          marginBottom: "15px",
-        }}
-      />
-
-      <h1>Group Chat: {groupData?.name}</h1>
-
+  // Shared inner content module - CONVERTED TO FLEXBOX FOR STREAMLINED VIEWPORTS
+  const mainContent = (
+    <div 
+      className="feed-container" 
+      style={{ 
+        padding: embedded ? "0px" : "20px", 
+        maxWidth: "100%", 
+        width: "100%",
+        height: "100vh",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column"
+      }}
+    >
+      
+      {/* STICKY WRAPPED RICH HIGH-FIDELITY WHATSAPP STYLE TOP HEADER WITH SHADOWS */}
       <div
         style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "20px",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          background: "#07142b",
+          paddingBottom: "10px",
+          marginBottom: "10px",
         }}
       >
-        <button
-          className="edit-btn"
-          onClick={() => navigate(-1)}
-        >
-          ← Back
-        </button>
-
-        <button
-          className="create-btn"
-          onClick={() => window.location.reload()}
-        >
-          ↻ Refresh
-        </button>
-      </div>
-
-      {groupData?.createdBy !==
-        auth.currentUser?.uid && (
-        <button
-          className="delete-btn"
-          onClick={handleLeaveGroup}
-          style={{
-            marginBottom: "15px",
-          }}
-        >
-          Leave Group
-        </button>
-      )}
-
-      <p
-        style={{
-          color: "#94a3b8",
-          marginBottom: "20px",
-        }}
-      >
-        {groupData?.members?.length || 0} Members
-      </p>
-
-      {/* Collapsible Members List Section */}
-      <div className="post-card">
         <div
+          className="group-chat-header"
           style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            cursor: "pointer",
+            justifyContent: "space-between",
+            padding: "15px 20px",
+            background: "#1e293b",
+            borderRadius: "12px",
+            marginBottom: "0px", 
+            flexShrink: 0,
+            boxShadow: "0 2px 15px rgba(0,0,0,0.25)",
+            borderBottom: "1px solid #1e293b",
           }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
+            {/* Flex column layer to wrap avatar and micro-indicator neatly */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <img
+                src={groupData?.photo || "https://via.placeholder.com/50"}
+                alt="group"
+                style={{
+                  width: "50px",
+                  height: "50px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: groupData?.photo ? "2px solid #2563eb" : "none"
+                }}
+              />
+              {/* STEP 7: GREEN ONLINE INDICATOR DOT */}
+              <div
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  background: "#22c55e",
+                  borderRadius: "50%",
+                  marginTop: "4px",
+                }}
+              ></div>
+            </div>
+
+            <div>
+              <h2 style={{ margin: 0 }}>
+                {groupData?.name}
+              </h2>
+
+              <small
+                style={{
+                  color: "#22c55e",
+                  fontWeight: "600"
+                }}
+              >
+                {groupData?.members?.length || 0} members online
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Standalone flow commands panel controls layout */}
+      {!embedded && (
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexShrink: 0 }}>
+          <button className="edit-btn" onClick={() => navigate(-1)}>
+            ← Back
+          </button>
+          <button className="create-btn" onClick={() => window.location.reload()}>
+            ↻ Refresh
+          </button>
+        </div>
+      )}
+
+      {/* Collapsible Members List Section */}
+      <div className="post-card" style={{ flexShrink: 0, marginBottom: "10px" }}>
+        <div
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
           onClick={() => setShowMembers(!showMembers)}
         >
-          <h3 style={{ margin: 0 }}>
-            👥 {groupData?.members?.length || 0} Members
-          </h3>
+          <h3 style={{ margin: 0 }}>👥 {groupData?.members?.length || 0} Members</h3>
           <span>{showMembers ? "▲" : "▼"}</span>
         </div>
 
         {showMembers && (
-          <div style={{ marginTop: "15px" }}>
+          <div style={{ marginTop: "15px", maxHeight: "150px", overflowY: "auto" }}>
             {users
               .filter((user) => groupData?.members?.includes(user.id))
               .map((user) => (
-                <div
-                  key={user.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "10px",
-                  }}
-                >
+                <div key={user.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                   <span>👤 {user.name}</span>
                   <div>
                     {groupData?.createdBy === user.id && (
-                      <span
-                        style={{
-                          color: "#f59e0b",
-                          fontWeight: "bold",
-                          marginRight: "10px",
-                        }}
-                      >
+                      <span style={{ color: "#f59e0b", fontWeight: "bold", marginRight: "10px" }}>
                         Admin
                       </span>
                     )}
 
-                    {groupData?.createdBy === auth.currentUser?.uid &&
-                      user.id !== auth.currentUser?.uid && (
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleRemoveMember(user.id)}
-                          style={{
-                            background: "#ef4444",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            padding: "4px 8px",
-                            fontSize: "12px"
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
+                    {groupData?.createdBy === auth.currentUser?.uid && user.id !== auth.currentUser?.uid && (
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleRemoveMember(user.id)}
+                        style={{
+                          background: "#ef4444",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          padding: "4px 8px",
+                          fontSize: "12px"
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -399,22 +486,17 @@ function GroupChatPage() {
       </div>
 
       {/* Collapsible Add Members Section */}
-      <div className="post-card">
+      <div className="post-card" style={{ flexShrink: 0, marginBottom: "10px" }}>
         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            cursor: "pointer",
-          }}
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
           onClick={() => setShowAddMembers(!showAddMembers)}
         >
-          <h3 style={{ margin: 0 }}>Add Members</h3>
+          <h3>Add Members</h3>
           <span>{showAddMembers ? "▲" : "▼"}</span>
         </div>
 
         {showAddMembers && (
-          <div style={{ marginTop: "15px" }}>
+          <div style={{ marginTop: "15px", maxHeight: "150px", overflowY: "auto" }}>
             <input
               type="text"
               placeholder="Search user..."
@@ -431,37 +513,14 @@ function GroupChatPage() {
             />
 
             {users
-              .filter(
-                (user) =>
-                  user.id !== auth.currentUser?.uid &&
-                  user.name?.toLowerCase().includes(searchUser.toLowerCase())
-              )
+              .filter((user) => user.id !== auth.currentUser?.uid && user.name?.toLowerCase().includes(searchUser.toLowerCase()))
               .map((user) => (
-                <div
-                  key={user.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "10px",
-                  }}
-                >
+                <div key={user.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                   <span>{user.name}</span>
-                  
                   {groupData?.members?.includes(user.id) ? (
-                    <span
-                      style={{
-                        color: "#22c55e",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      ✓ Added
-                    </span>
+                    <span style={{ color: "#22c55e", fontWeight: "bold" }}>✓ Added</span>
                   ) : (
-                    <button
-                      className="create-btn"
-                      onClick={() => handleAddMember(user.id)}
-                    >
+                    <button className="create-btn" onClick={() => handleAddMember(user.id)}>
                       Add
                     </button>
                   )}
@@ -471,12 +530,14 @@ function GroupChatPage() {
         )}
       </div>
 
-      {/* Scrollable Message Box Panel layout wrapper */}
-      <div
-        className="post-card"
-        style={{
-          maxHeight: "450px",
-          overflowY: "auto",
+      {/* CHAT APP STYLED 70VH SCROLLABLE ZONE */}
+      <div 
+        className="post-card" 
+        style={{ 
+          height: "70vh", 
+          overflowY: "auto", 
+          marginBottom: "10px",
+          padding: "15px"
         }}
       >
         <h3>Messages</h3>
@@ -489,49 +550,29 @@ function GroupChatPage() {
             const isMine = msg.senderId === auth.currentUser?.uid;
 
             return (
-              <div
-                key={msg.id}
-                style={{
-                  display: "flex",
-                  justifyContent: isMine ? "flex-end" : "flex-start",
-                  marginBottom: "12px",
-                }}
-              >
+              <div key={msg.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: "12px" }}>
                 <div
                   style={{
-                    background: isMine ? "#2563eb" : "#475569",
+                    background: isMine ? "#2563eb" : "#374151",
                     color: "white",
-                    padding: "10px 15px",
+                    padding: "12px 16px", 
                     borderRadius: "12px",
-                    maxWidth: "70%",
+                    maxWidth: "65%", 
+                    minWidth: "80px",
                     wordBreak: "break-word",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
                   }}
                 >
                   {!isMine && (
-                    <div
-                      style={{
-                        fontWeight: "bold",
-                        marginBottom: "5px",
-                        color: "#93c5fd",
-                      }}
-                    >
+                    <div style={{ fontWeight: "bold", marginBottom: "5px", color: "#93c5fd" }}>
                       {verifiedSenderName}
                     </div>
                   )}
 
                   <div>{msg.text}</div>
 
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      opacity: 0.7,
-                      marginTop: "5px",
-                      textAlign: "right",
-                    }}
-                  >
-                    {msg.createdAt?.seconds
-                      ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString()
-                      : ""}
+                  <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "5px", textAlign: "right" }}>
+                    {msg.createdAt?.seconds ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString() : ""}
                   </div>
                 </div>
               </div>
@@ -541,30 +582,165 @@ function GroupChatPage() {
         <div ref={bottomRef}></div>
       </div>
 
-      {/* Upgraded Composer Text Input box Area layout */}
-      <div className="post-card">
+      {/* WHATSAPP STYLE ROW CONTEXT INPUT COMPOSER AREA */}
+      <div 
+        className="post-card" 
+        style={{ 
+          position: "sticky",
+          bottom: "0",
+          zIndex: 50,
+          marginTop: "10px",
+          flexShrink: 0,
+          display: "flex",
+          gap: "10px",
+          alignItems: "center",
+          background: "#0f172a",
+          borderTop: "1px solid #1e293b"
+        }}
+      >
         <textarea
-          rows={3}
+          rows={1}
           placeholder="Message group..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           style={{
-            width: "100%",
+            flex: 1,
             resize: "none",
-            padding: "12px",
+            height: "50px",
+            padding: "14px",
             borderRadius: "8px",
             boxSizing: "border-box",
             border: "1px solid #cbd5e1"
           }}
         />
-        <br />
-        <br />
-        <button className="create-btn" onClick={handleSend}>
+        <button 
+          className="create-btn" 
+          onClick={handleSend}
+          style={{
+            width: "90px",
+            height: "50px",
+            fontWeight: "600",
+            borderRadius: "10px"
+          }}
+        >
           Send
         </button>
       </div>
+
+      {/* COLLAPSIBLE GROUP SETTINGS CARD */}
+      <div
+        className="post-card"
+        style={{
+          marginBottom: "20px",
+          flexShrink: 0
+        }}
+      >
+        <div
+          onClick={() => setShowSettings(!showSettings)}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer",
+          }}
+        >
+          <h3 style={{ margin: 0 }}>
+            ⚙️ Group Settings
+          </h3>
+          <span>
+            {showSettings ? "▲" : "▼"}
+          </span>
+        </div>
+
+        {showSettings && (
+          <div style={{ marginTop: "15px" }}>
+            {groupData?.createdBy === auth.currentUser?.uid ? (
+              <>
+                <label
+                  style={{
+                    display: "block",
+                    padding: "12px",
+                    background: "#334155",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    marginBottom: "10px",
+                    fontWeight: "600"
+                  }}
+                >
+                  📷 Change Group Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => setGroupImage(e.target.files[0])}
+                  />
+                </label>
+
+                <button
+                  className="create-btn"
+                  onClick={uploadGroupPhoto}
+                  style={{
+                    width: "100%",
+                    marginBottom: "10px",
+                  }}
+                >
+                  Update Group Photo
+                </button>
+
+                <button
+                  className="delete-btn"
+                  onClick={handleDeleteGroup}
+                  style={{
+                    width: "100%",
+                    background: "#dc2626"
+                  }}
+                >
+                  Delete Group
+                </button>
+              </>
+            ) : (
+              <button
+                className="delete-btn"
+                onClick={handleLeaveGroup}
+                style={{
+                  width: "100%",
+                }}
+              >
+                Leave Group
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
+
+  if (isCheckingAccess) {
+    const loadingView = (
+      <div className="feed-container" style={{ padding: "20px", textAlign: "center" }}>
+        <p style={{ color: "#64748b" }}>Verifying access status...</p>
+      </div>
+    );
+    return embedded ? loadingView : <AppLayout>{loadingView}</AppLayout>;
+  }
+
+  if (!hasAccess) {
+    const accessDeniedView = (
+      <div className="feed-container" style={{ padding: "20px" }}>
+        <div className="post-card" style={{ textAlign: "center", padding: "30px" }}>
+          <h2 style={{ color: "#ef4444" }}>🔒 Access Denied</h2>
+          <p style={{ color: "#64748b", margin: "15px 0" }}>
+            You are not a member of this private group chat segment.
+          </p>
+        </div>
+      </div>
+    );
+    return embedded ? accessDeniedView : <AppLayout>{accessDeniedView}</AppLayout>;
+  }
+
+  // Dynamic branch selection avoiding extra sidebars double nesting glitches
+  return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }
 
 export default GroupChatPage;
