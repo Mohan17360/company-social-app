@@ -36,7 +36,7 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
   const [users, setUsers] = useState([]);
   const [searchUser, setSearchUser] = useState("");
 
-  // CORRECTION: Set components cleanly collapsed by default for Discord/WhatsApp flow
+  // Cleanly collapsed by default for Discord/WhatsApp flow
   const [showMembers, setShowMembers] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [showSettings, setShowSettings] = useState(false); 
@@ -168,7 +168,6 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
     });
   }, [messages]);
 
-  // UPDATED: Now appends a document invite notification for the added member
   const handleAddMember = async (memberId) => {
     try {
       await updateDoc(
@@ -395,7 +394,7 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
                   border: groupData?.photo ? "2px solid #2563eb" : "none"
                 }}
               />
-              {/* STEP 7: GREEN ONLINE INDICATOR DOT */}
+              {/* GREEN ONLINE INDICATOR DOT */}
               <div
                 style={{
                   width: "8px",
@@ -422,6 +421,23 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
               </small>
             </div>
           </div>
+
+          {/* RIGHT SIDE HEADER ACTIONS BLOCK */}
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              gap: "20px",
+              fontSize: "20px",
+              cursor: "pointer",
+              alignItems: "center",
+              color: "#94a3b8"
+            }}
+          >
+            <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"}>📞</span>
+            <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"}>📹</span>
+            <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"}>⋮</span>
+          </div>
         </div>
       </div>
 
@@ -437,8 +453,149 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
         </div>
       )}
 
+      {/* CHAT APP STYLED SCROLLABLE ZONE - UPDATED FOR BOTTOM ALIGNMENT LIKE WHATSAPP */}
+      <div 
+        className="post-card" 
+        style={{ 
+          height: "70vh", 
+          overflowY: "auto", 
+          marginBottom: "10px",
+          padding: "15px",
+          display: "flex",
+          flexDirection: "column"
+        }}
+      >
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <h3>Messages</h3>
+          {messages.length === 0 ? (
+            <p style={{ color: "#94a3b8", textAlign: "center", margin: "auto 0" }}>No messages here yet. Say hi!</p>
+          ) : (
+            messages.map((msg) => {
+              const originalSender = users.find((u) => u.id === msg.senderId);
+              const verifiedSenderName = msg.senderName || originalSender?.name || "User";
+              const isMine = msg.senderId === auth.currentUser?.uid;
+
+              // Avatar and Identity mapping logic layers
+              const senderUser = users.find((u) => u.id === msg.senderId);
+              const senderAvatar = senderUser?.photo || "https://ui-avatars.com/api/?background=2563eb&color=fff&name=" + encodeURIComponent(verifiedSenderName);
+
+              return (
+                <div 
+                  key={msg.id} 
+                  style={{ 
+                    display: "flex", 
+                    justifyContent: isMine ? "flex-end" : "flex-start", 
+                    alignItems: "flex-end",
+                    gap: "8px",
+                    marginBottom: "14px"
+                  }}
+                >
+                  {/* Dynamically append side avatar block if the message belongs to other group members */}
+                  {!isMine && (
+                    <img
+                      src={senderAvatar}
+                      alt={verifiedSenderName}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        flexShrink: 0
+                      }}
+                    />
+                  )}
+
+                  <div
+                    style={{
+                      background: isMine ? "#2563eb" : "#374151",
+                      color: "white",
+                      padding: "12px 16px", 
+                      borderRadius: "12px",
+                      maxWidth: "320px", 
+                      minWidth: "120px",
+                      wordBreak: "break-word",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+                    }}
+                  >
+                    {!isMine && (
+                      <div style={{ fontWeight: "bold", marginBottom: "5px", color: "#93c5fd" }}>
+                        {verifiedSenderName}
+                      </div>
+                    )}
+
+                    <div>{msg.text}</div>
+
+                    <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "5px", textAlign: "right" }}>
+                      {msg.createdAt?.seconds ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString() : ""}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div ref={bottomRef}></div>
+      </div>
+
+      {/* WHATSAPP STYLE ROW CONTEXT INPUT COMPOSER AREA */}
+      <div 
+        className="post-card" 
+        style={{ 
+          position: "sticky",
+          bottom: "0",
+          zIndex: 50,
+          marginTop: "10px",
+          flexShrink: 0,
+          display: "flex",
+          gap: "10px",
+          alignItems: "center",
+          background: "#0f172a",
+          borderTop: "1px solid #1e293b",
+          padding: "10px 15px"
+        }}
+      >
+        <span style={{ fontSize: "22px", cursor: "pointer", opacity: 0.8 }}>😊</span>
+        <textarea
+          rows={1}
+          placeholder="Type a message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          style={{
+            flex: 1,
+            resize: "none",
+            height: "50px",
+            padding: "14px",
+            borderRadius: "25px",
+            boxSizing: "border-box",
+            border: "1px solid #cbd5e1",
+            background: "#1e293b",
+            color: "white"
+          }}
+        />
+        <button 
+          className="create-btn" 
+          onClick={handleSend}
+          style={{
+            width: "50px",
+            height: "50px",
+            fontSize: "20px",
+            fontWeight: "bold",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0",
+            paddingLeft: "4px"
+          }}
+        >
+          ➤
+        </button>
+      </div>
+
+      {/* Collapsible Members/Management modules shifted to the footer context area */}
+      
       {/* Collapsible Members List Section */}
-      <div className="post-card" style={{ flexShrink: 0, marginBottom: "10px" }}>
+      <div className="post-card" style={{ flexShrink: 0, marginBottom: "10px", marginTop: "20px" }}>
         <div
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
           onClick={() => setShowMembers(!showMembers)}
@@ -528,103 +685,6 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
               ))}
           </div>
         )}
-      </div>
-
-      {/* CHAT APP STYLED 70VH SCROLLABLE ZONE */}
-      <div 
-        className="post-card" 
-        style={{ 
-          height: "70vh", 
-          overflowY: "auto", 
-          marginBottom: "10px",
-          padding: "15px"
-        }}
-      >
-        <h3>Messages</h3>
-        {messages.length === 0 ? (
-          <p style={{ color: "#94a3b8", textAlign: "center" }}>No messages here yet. Say hi!</p>
-        ) : (
-          messages.map((msg) => {
-            const originalSender = users.find((u) => u.id === msg.senderId);
-            const verifiedSenderName = msg.senderName || originalSender?.name || "User";
-            const isMine = msg.senderId === auth.currentUser?.uid;
-
-            return (
-              <div key={msg.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: "12px" }}>
-                <div
-                  style={{
-                    background: isMine ? "#2563eb" : "#374151",
-                    color: "white",
-                    padding: "12px 16px", 
-                    borderRadius: "12px",
-                    maxWidth: "65%", 
-                    minWidth: "80px",
-                    wordBreak: "break-word",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
-                  }}
-                >
-                  {!isMine && (
-                    <div style={{ fontWeight: "bold", marginBottom: "5px", color: "#93c5fd" }}>
-                      {verifiedSenderName}
-                    </div>
-                  )}
-
-                  <div>{msg.text}</div>
-
-                  <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "5px", textAlign: "right" }}>
-                    {msg.createdAt?.seconds ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString() : ""}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-        <div ref={bottomRef}></div>
-      </div>
-
-      {/* WHATSAPP STYLE ROW CONTEXT INPUT COMPOSER AREA */}
-      <div 
-        className="post-card" 
-        style={{ 
-          position: "sticky",
-          bottom: "0",
-          zIndex: 50,
-          marginTop: "10px",
-          flexShrink: 0,
-          display: "flex",
-          gap: "10px",
-          alignItems: "center",
-          background: "#0f172a",
-          borderTop: "1px solid #1e293b"
-        }}
-      >
-        <textarea
-          rows={1}
-          placeholder="Message group..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          style={{
-            flex: 1,
-            resize: "none",
-            height: "50px",
-            padding: "14px",
-            borderRadius: "8px",
-            boxSizing: "border-box",
-            border: "1px solid #cbd5e1"
-          }}
-        />
-        <button 
-          className="create-btn" 
-          onClick={handleSend}
-          style={{
-            width: "90px",
-            height: "50px",
-            fontWeight: "600",
-            borderRadius: "10px"
-          }}
-        >
-          Send
-        </button>
       </div>
 
       {/* COLLAPSIBLE GROUP SETTINGS CARD */}

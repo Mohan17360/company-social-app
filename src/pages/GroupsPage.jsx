@@ -25,7 +25,7 @@ function GroupsPage() {
   
   const [clickedGroupId, setClickedGroupId] = useState(null);
 
-  // FIXED: Prioritizing local click handler state over route params during split-screen context
+  // PRIORITIZING local click handler state over route params during split-screen context
   const selectedGroupId = clickedGroupId || routeGroupId || null;
 
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ function GroupsPage() {
     }
   };
 
-  // FIXED: Modified tracking handler bypasses route loops to isolate click events safely
+  // Modified tracking handler bypasses route loops to isolate click events safely
   const handleGroupClick = (groupId) => {
     console.log("GROUP CLICKED:", groupId);
     setClickedGroupId(groupId);
@@ -125,17 +125,18 @@ function GroupsPage() {
     <AppLayout>
       <div className="chat-page-layout" style={{ display: "flex", width: "100%", height: "100vh" }}>
         
-        {/* Left Side Panel View Module (FIXED TO 320PX WIDTH) */}
+        {/* Left Side Panel View Module (FIXED AT 380PX FOR PROPER TEXT RESPONSIVENESS) */}
         <div 
           className="chat-users-panel" 
           style={{ 
-            width: "320px", 
-            minWidth: "320px", 
-            maxWidth: "320px", 
+            width: "380px", 
+            minWidth: "380px", 
+            maxWidth: "380px", 
             borderRight: "1px solid #334155", 
             padding: "20px", 
             overflowY: "auto",
-            boxSizing: "border-box"
+            boxSizing: "border-box",
+            background: "#0f172a"
           }}
         >
           <h3>Groups</h3>
@@ -194,7 +195,7 @@ function GroupsPage() {
                     padding: "12px",
                     borderRadius: "10px",
                     marginBottom: "10px",
-                    transition: "0.2s", // Smooth micro-interaction transitions
+                    transition: "0.2s", 
                     background: isSelected ? "#1e293b" : "transparent"
                   }}
                 >
@@ -220,7 +221,7 @@ function GroupsPage() {
             })}
         </div>
 
-        {/* Right Side Conversation Workspace Pane - FIXED BOUNDS FOR SMOOTH SCROLL */}
+        {/* Right Side Conversation Workspace Pane - DARKER BACKGROUND FOR ELITE CONTRAST */}
         <div 
           className="chat-empty-area" 
           style={{ 
@@ -228,7 +229,8 @@ function GroupsPage() {
             display: "flex", 
             flexDirection: "column", 
             height: "100vh", 
-            overflow: "hidden" 
+            overflow: "hidden",
+            background: "#172033" 
           }}
         >
           {selectedGroupId ? (
