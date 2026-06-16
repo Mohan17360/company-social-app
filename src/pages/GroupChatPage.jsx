@@ -17,7 +17,7 @@ import {
   getDocs,
   writeBatch
 } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db, auth } from "../firebase"; // Storage instance pull completely removed
 import AppLayout from "../components/AppLayout";
 
 function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
@@ -41,8 +41,13 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [showSettings, setShowSettings] = useState(false); 
   const [groupImage, setGroupImage] = useState(null);
+  
+  // Media asset attachment states
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Automatically mark relevant unread notifications as read using batch writes
   useEffect(() => {
@@ -291,16 +296,43 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
   };
 
   const handleSend = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() && !selectedImage) return;
 
     try {
+      setIsUploading(true);
+      let uploadedImageUrl = "";
+
+      // Step A: Replaced Firebase Storage logic with robust Cloudinary multi-part uploads pipeline
+      if (selectedImage) {
+        console.log("IMAGE SELECTED");
+
+        const formData = new FormData();
+        formData.append("file", selectedImage);
+        formData.append("upload_preset", "companysocial");
+
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/doocnue5h/image/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+        uploadedImageUrl = data.secure_url;
+
+        console.log("CLOUDINARY URL:", uploadedImageUrl);
+      }
+
       const currentUserProfile = users.find((u) => u.id === auth.currentUser?.uid);
 
+      // Step B: Dispatch clean aggregate package array objects directly
       await addDoc(collection(db, "groupMessages"), {
         groupId,
         senderId: auth.currentUser.uid,
         senderName: currentUserProfile?.name || auth.currentUser.displayName || "User",
-        text: message,
+        text: message.trim() ? message : "",
+        imageUrl: uploadedImageUrl || null,
         createdAt: serverTimestamp(),
       });
 
@@ -328,8 +360,14 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
       }
 
       setMessage("");
+      setSelectedImage(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsUploading(false);
     } catch (error) {
+      // Step C: Verbose error categorization targeting missing permissions or invalid buckets
+      console.error("GROUP IMAGE ERROR:", error);
       alert(error.message);
+      setIsUploading(false);
     }
   };
 
@@ -417,12 +455,12 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
                   fontWeight: "600"
                 }}
               >
-                {groupData?.members?.length || 0} members online
+                {groupData?.members?.length || 0} members
               </small>
             </div>
           </div>
 
-          {/* RIGHT SIDE HEADER ACTIONS BLOCK */}
+          {/* FIX #2: Replaced react-icons elements with custom native high-contrast span triggers */}
           <div
             style={{
               marginLeft: "auto",
@@ -435,7 +473,7 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
             }}
           >
             <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"}>📞</span>
-            <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"}>📹</span>
+            <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"} />
             <span style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#fff"} onMouseOut={(e) => e.target.style.color = "#94a3b8"}>⋮</span>
           </div>
         </div>
@@ -457,7 +495,7 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
       <div 
         className="post-card" 
         style={{ 
-          height: "70vh", 
+          flex: 1, 
           overflowY: "auto", 
           marginBottom: "10px",
           padding: "15px",
@@ -523,7 +561,27 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
                       </div>
                     )}
 
-                    <div>{msg.text}</div>
+                    {/* RENDER LOGIC MULTI-BRANCH FOR MEDIA CAPABILITY PATHWAYS */}
+                    <>
+                      {msg.text && <div style={{ marginBottom: msg.imageUrl ? "8px" : "0" }}>{msg.text}</div>}
+                      {msg.imageUrl && (
+                        <a href={msg.imageUrl} target="_blank" rel="noreferrer">
+                          <img
+                            src={msg.imageUrl}
+                            alt="Shared upload panel"
+                            style={{
+                              maxWidth: "100%",
+                              width: "240px",
+                              maxHeight: "200px",
+                              objectFit: "cover",
+                              borderRadius: "8px",
+                              marginTop: "4px",
+                              border: "1px solid rgba(255,255,255,0.1)"
+                            }}
+                          />
+                        </a>
+                      )}
+                    </>
 
                     <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "5px", textAlign: "right" }}>
                       {msg.createdAt?.seconds ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString() : ""}
@@ -547,60 +605,103 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
           marginTop: "10px",
           flexShrink: 0,
           display: "flex",
-          gap: "10px",
-          alignItems: "center",
+          flexDirection: "column",
           background: "#0f172a",
           borderTop: "1px solid #1e293b",
-          padding: "10px 15px"
+          padding: "10px 15px",
+          gap: "8px"
         }}
       >
-        <span style={{ fontSize: "22px", cursor: "pointer", opacity: 0.8 }}>😊</span>
-        <textarea
-          rows={1}
-          placeholder="Type a message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          style={{
-            flex: 1,
-            resize: "none",
-            height: "50px",
-            padding: "14px",
-            borderRadius: "25px",
-            boxSizing: "border-box",
-            border: "1px solid #cbd5e1",
-            background: "#1e293b",
-            color: "white"
-          }}
-        />
-        <button 
-          className="create-btn" 
-          onClick={handleSend}
-          style={{
-            width: "50px",
-            height: "50px",
-            fontSize: "20px",
-            fontWeight: "bold",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0",
-            paddingLeft: "4px"
-          }}
-        >
-          ➤
-        </button>
+        {/* IMAGE PREVIEW COMPONENT TRACK BEFORE UPLOAD ACTION */}
+        {selectedImage && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#1e293b", padding: "8px 12px", borderRadius: "8px", width: "fit-content" }}>
+            <img
+              src={URL.createObjectURL(selectedImage)}
+              alt=""
+              style={{
+                width: "80px",
+                height: "80px",
+                objectFit: "cover",
+                borderRadius: "10px"
+              }}
+            />
+            <button 
+              onClick={() => { setSelectedImage(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+              style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontWeight: "bold" }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
+          <span style={{ fontSize: "22px", cursor: "pointer", opacity: 0.8 }}>😊</span>
+          
+          <span 
+            style={{ fontSize: "22px", cursor: "pointer", opacity: 0.8, transition: "transform(0.1s)" }}
+            onClick={() => fileInputRef.current?.click()}
+            onMouseEnter={(e) => e.target.style.transform = "scale(1.1)"}
+            onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
+          >
+            🖼️
+          </span>
+
+          <input 
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={(e) => setSelectedImage(e.target.files[0] || null)}
+            style={{ display: "none" }}
+          />
+
+          <textarea
+            rows={1}
+            placeholder={selectedImage ? "Add a caption..." : "Type a message..."}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            style={{
+              flex: 1,
+              resize: "none",
+              height: "50px",
+              padding: "14px",
+              borderRadius: "25px",
+              boxSizing: "border-box",
+              border: "1px solid #cbd5e1",
+              background: "#1e293b",
+              color: "white"
+            }}
+          />
+          <button 
+            className="create-btn" 
+            onClick={handleSend}
+            disabled={isUploading}
+            style={{
+              width: "50px",
+              height: "50px",
+              fontSize: "20px",
+              fontWeight: "bold",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0",
+              paddingLeft: "4px",
+              opacity: isUploading ? 0.6 : 1,
+              cursor: isUploading ? "not-allowed" : "pointer"
+            }}
+          >
+            {isUploading ? "..." : "➤"}
+          </button>
+        </div>
       </div>
 
-      {/* Collapsible Members/Management modules shifted to the footer context area */}
-      
       {/* Collapsible Members List Section */}
       <div className="post-card" style={{ flexShrink: 0, marginBottom: "10px", marginTop: "20px" }}>
         <div
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
           onClick={() => setShowMembers(!showMembers)}
         >
-          <h3 style={{ margin: 0 }}>👥 {groupData?.members?.length || 0} Members</h3>
+          <h3 style={{ margin: 0 }}>Members ({groupData?.members?.length || 0})</h3>
           <span>{showMembers ? "▲" : "▼"}</span>
         </div>
 
