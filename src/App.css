@@ -472,12 +472,15 @@ button:hover {
    ========================================== */
 .chat-page-layout {
   display: flex;
-  height: calc(100vh - 40px);
+  height: 100vh;
+  width: 100%;
   background: #0f172a;
+  overflow: hidden;
 }
 
 .chat-users-panel {
-  width: 380px;
+  width: 370px;
+  flex-shrink: 0;
   border-right: 1px solid #334155;
   overflow-y: auto;
 }
@@ -543,12 +546,15 @@ button:hover {
   font-size: 12px;
 }
 
+/* REPLACED FIX: Removed justify-content and align-items to prevent layout centering bugs on workspace */
 .chat-empty-area {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
   display: flex;
-  justify-content: center;
-  align-items: center;
   flex-direction: column;
+  min-height: 0;
 }
 
 .chat-header {
@@ -600,16 +606,17 @@ button:hover {
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-/* WhatsApp Styling Overlays */
+/* REPLACED FIX: Purged min-height stretch rules to optimize baseline standard row mappings */
 .chat-messages {
-  height: 500px;
-  overflow-y: auto;
-  padding: 15px;
-  border-radius: 12px;
-  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
+/* REPLACED FIX: Injected align-self: flex-end attribute rule safely */
 .whatsapp-sent {
+  align-self: flex-end;
   background: #005c4b;
   color: white;
   padding: 8px 12px;
@@ -619,7 +626,9 @@ button:hover {
   position: relative;
 }
 
+/* REPLACED FIX: Injected align-self: flex-start attribute rule safely */
 .whatsapp-received {
+  align-self: flex-start;
   background: #202c33;
   color: white;
   padding: 8px 12px;
@@ -919,9 +928,10 @@ button:hover {
    10. ADDED CHAT COMPONENT STEPS & MODIFIERS
    ========================================== */
 .instagram-chat-layout {
+  width: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 20px);
 }
 
 .instagram-chat-header {
@@ -949,10 +959,15 @@ button:hover {
   cursor: pointer;
 }
 
+/* REPLACED FIX 2: Applied precise layout attributes forcing standard scrolling inside the parent wrapper bounds */
 .instagram-message-area {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  overflow-x: hidden;
+  padding: 15px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
 }
 
 .instagram-chat-input-container {
@@ -1013,6 +1028,17 @@ button:hover {
   background: #1e293b;
 }
 
+/* REPLACED FIX 4: Applied strict dynamic parameters enforcing uniform dimension calculations across button sets */
+.edit-btn,
+.create-btn {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
 
 /* ==========================================
    9. MEDIA QUERIES (MOBILE RESPONSIVENESS) 

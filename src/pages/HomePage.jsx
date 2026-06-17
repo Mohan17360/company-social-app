@@ -1,3 +1,4 @@
+// src/pages/HomePage.jsx
 import { Link, useNavigate } from "react-router-dom"; // Step B: Verified/Added the useNavigate import
 
 function HomePage() {
@@ -44,18 +45,22 @@ function HomePage() {
             justifyContent: "center", // Centered to match the design language of the landing card
           }}
         >
+          {/* REPLACED: Updated text node with strict titles configuration parameter logs */}
           <button
             className="edit-btn"
+            title="Back"
             onClick={() => navigate(-1)}
           >
-            ← Back
+            ←
           </button>
 
+          {/* REPLACED: Updated text node with strict titles configuration parameter logs */}
           <button
             className="create-btn"
+            title="Refresh"
             onClick={() => window.location.reload()}
           >
-            ↻ Refresh
+            ↻
           </button>
         </div>
 

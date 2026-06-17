@@ -20,6 +20,9 @@ import {
 import { db, auth } from "../firebase"; // Storage instance pull completely removed
 import AppLayout from "../components/AppLayout";
 
+// Injected clean unified storage bridge utility loader asset
+import { uploadToCloudinary } from "../utils/cloudinaryUpload";
+
 function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
   const params = useParams();
   const navigate = useNavigate();
@@ -260,32 +263,17 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
     }
   };
 
+  // Step 6: Upgraded group photo deployment workflow fetching modular upload paths
   const uploadGroupPhoto = async () => {
     if (!groupImage) return;
 
     try {
-      const formData = new FormData();
-
-      formData.append("file", groupImage);
-      formData.append(
-        "upload_preset",
-        "companysocial"
-      );
-
-      const response = await fetch(
-        "https://api.cloudinary.com/v1_1/doocnue5h/image/upload",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
+      const photoURL = await uploadToCloudinary(groupImage);
 
       await updateDoc(
         doc(db, "groups", groupId),
         {
-          photo: data.secure_url,
+          photo: photoURL,
         }
       );
 
@@ -302,25 +290,10 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
       setIsUploading(true);
       let uploadedImageUrl = "";
 
-      // Step A: Replaced Firebase Storage logic with robust Cloudinary multi-part uploads pipeline
+      // Step A/B Check: Traced stream image parameters passing through Cloudinary bridge structure
       if (selectedImage) {
         console.log("IMAGE SELECTED");
-
-        const formData = new FormData();
-        formData.append("file", selectedImage);
-        formData.append("upload_preset", "companysocial");
-
-        const response = await fetch(
-          "https://api.cloudinary.com/v1_1/doocnue5h/image/upload",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-        const data = await response.json();
-        uploadedImageUrl = data.secure_url;
-
+        uploadedImageUrl = await uploadToCloudinary(selectedImage);
         console.log("CLOUDINARY URL:", uploadedImageUrl);
       }
 
@@ -701,7 +674,7 @@ function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
           onClick={() => setShowMembers(!showMembers)}
         >
-          <h3 style={{ margin: 0 }}>Members ({groupData?.members?.length || 0})</h3>
+          <h3>Members ({groupData?.members?.length || 0})</h3>
           <span>{showMembers ? "▲" : "▼"}</span>
         </div>
 

@@ -15,7 +15,7 @@ import AdminPage from "./pages/AdminPage";
 import SavedPostsPage from "./pages/SavedPostsPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import ChatPage from "./pages/ChatPage";
-import ChatRoomPage from "./pages/ChatRoomPage";
+// REMOVED: Standalone route entry import pruned to clear layout structural conflicts
 import GroupsPage from "./pages/GroupsPage";
 import GroupChatPage from "./pages/GroupChatPage";
 import MaintenanceGuard from "./components/MaintenanceGuard";
@@ -58,7 +58,7 @@ function App() {
         <Route path="/notifications" element={<MaintenanceGuard><NotificationsPage /></MaintenanceGuard>} />
         <Route path="/saved" element={<MaintenanceGuard><SavedPostsPage /></MaintenanceGuard>} />
         <Route path="/chat" element={<MaintenanceGuard><ChatPage /></MaintenanceGuard>} />
-        <Route path="/chat/:userId" element={<MaintenanceGuard><ChatRoomPage /></MaintenanceGuard>} />
+        {/* DELETED: Legacy direct routing link configuration removed safely */}
         <Route path="/groups" element={<MaintenanceGuard><GroupsPage /></MaintenanceGuard>} />
         <Route path="/search" element={<MaintenanceGuard><SearchPage /></MaintenanceGuard>} />
       </Routes>

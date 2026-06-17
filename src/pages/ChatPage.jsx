@@ -69,8 +69,15 @@ function ChatPage() {
             !latest[otherUser] ||
             currentTime > latest[otherUser].time
           ) {
+            // REPLACED: Updated with deleted message logic mapping
             latest[otherUser] = {
-              text: msg.text,
+              text: msg.deleted
+                ? "🚫 This message was deleted"
+                : msg.text || "",
+              imageUrl: msg.imageUrl || "",
+              fileUrl: msg.fileUrl || "",
+              audioUrl: msg.audioUrl || "",
+              deleted: msg.deleted || false,
               time: currentTime,
               timestamp: msg.createdAt,
             };
@@ -108,7 +115,6 @@ function ChatPage() {
   );
 
   // FIX: Derived State Pattern - Automatically fallback to first user if none explicitly selected.
-  // This completely eliminates the asynchronous cascading renders warning from ESLint.
   const activeChatUserId = selectedUser || filteredUsers[0]?.id;
 
   return (
@@ -186,8 +192,17 @@ function ChatPage() {
                   </span>
                 </div>
 
-                <p style={{ margin: "4px 0 0 0", color: "#94a3b8", fontSize: "13px" }}>
-                  {lastMessages[user.id]?.text || "Start conversation"}
+                {/* REPLACED: Structural priority rendering evaluating the message preview type including deleted states */}
+                <p style={{ margin: "4px 0 0 0", color: "#94a3b8", fontSize: "13px", fontWeight: unreadCounts[user.id] > 0 ? "bold" : "normal" }}>
+                  {lastMessages[user.id]?.deleted
+                    ? "🚫 This message was deleted"
+                    : lastMessages[user.id]?.imageUrl
+                    ? "📷 Photo"
+                    : lastMessages[user.id]?.fileUrl
+                    ? "📎 File"
+                    : lastMessages[user.id]?.audioUrl
+                    ? "🎤 Voice Message"
+                    : lastMessages[user.id]?.text}
                 </p>
               </div>
 
