@@ -36,15 +36,14 @@ button:hover {
   border-radius: 10px;
 }
 
-
 /* ==========================================
    2. CORE CONTAINERS & LAYOUTS 
    ========================================== */
 .profile-page {
-  max-width: 935px; /* Standard Instagram layout width */
+  max-width: 935px;
   margin: 0 auto;
   width: 100%;
-  flex-grow: 1; /* Sidebar ke bache hue area ko gracefully fill karne ke liye */
+  flex-grow: 1;
 }
 
 .feed-container {
@@ -55,7 +54,7 @@ button:hover {
 }
 
 .feed-main-content {
-  margin-left: 90px; /* Locked gutter workspace alignment padding */
+  margin-left: 90px;
   padding: 20px;
 }
 
@@ -71,7 +70,6 @@ button:hover {
   justify-content: space-between;
   margin-bottom: 20px;
 }
-
 
 /* ==========================================
    3. COMPONENTS (NAVBAR & HEADERS) 
@@ -186,7 +184,6 @@ button:hover {
   font-size: 15px;
 }
 
-
 /* ==========================================
    4. PROFILE EXTENSIONS & CARD MODULES 
    ========================================== */
@@ -278,7 +275,6 @@ button:hover {
 .stat-card p {
   color: #94a3b8;
 }
-
 
 /* ==========================================
    5. POSTS & ACTIONS ENGINE 
@@ -404,7 +400,6 @@ button:hover {
   margin-top: 15px;
 }
 
-
 /* ==========================================
    6. COMMENTS SYSTEM 
    ========================================== */
@@ -465,7 +460,6 @@ button:hover {
   margin-left: 45px;
   color: #e2e8f0;
 }
-
 
 /* ==========================================
    7. CHAT ROOM GENERAL MODULES 
@@ -546,7 +540,6 @@ button:hover {
   font-size: 12px;
 }
 
-/* REPLACED FIX: Removed justify-content and align-items to prevent layout centering bugs on workspace */
 .chat-empty-area {
   flex: 1;
   min-width: 0;
@@ -606,7 +599,6 @@ button:hover {
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-/* REPLACED FIX: Purged min-height stretch rules to optimize baseline standard row mappings */
 .chat-messages {
   display: flex;
   flex-direction: column;
@@ -614,7 +606,6 @@ button:hover {
   width: 100%;
 }
 
-/* REPLACED FIX: Injected align-self: flex-end attribute rule safely */
 .whatsapp-sent {
   align-self: flex-end;
   background: #005c4b;
@@ -626,7 +617,6 @@ button:hover {
   position: relative;
 }
 
-/* REPLACED FIX: Injected align-self: flex-start attribute rule safely */
 .whatsapp-received {
   align-self: flex-start;
   background: #202c33;
@@ -671,7 +661,6 @@ button:hover {
   font-size: 15px;
 }
 
-
 /* ==========================================
    8. INSTAGRAM DESIGN EXPERIENCES 
    ========================================== */
@@ -709,7 +698,6 @@ button:hover {
   color: white;
 }
 
-/* Sidebar Engine */
 .instagram-sidebar {
   position: fixed;
   top: 0;
@@ -718,7 +706,7 @@ button:hover {
   height: 100vh;
   background: #000814;
   border-right: 1px solid #1e293b;
-  overflow: hidden; /* Clips elements gracefully */
+  overflow: hidden;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 20px 10px;
   z-index: 1000;
@@ -776,7 +764,6 @@ button:hover {
   right: 10px;
 }
 
-/* Modals & Creation Popups */
 .create-post-overlay {
   position: fixed;
   inset: 0;
@@ -885,7 +872,6 @@ button:hover {
   border-bottom: 1px solid #334155;
 }
 
-/* Instagram Profile High-Fidelity Post Grid Layout */
 .profile-posts-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -923,7 +909,6 @@ button:hover {
   background: #334155;
 }
 
-
 /* ==========================================
    10. ADDED CHAT COMPONENT STEPS & MODIFIERS
    ========================================== */
@@ -959,7 +944,6 @@ button:hover {
   cursor: pointer;
 }
 
-/* REPLACED FIX 2: Applied precise layout attributes forcing standard scrolling inside the parent wrapper bounds */
 .instagram-message-area {
   flex: 1;
   overflow-y: auto;
@@ -978,7 +962,6 @@ button:hover {
   padding: 15px;
 }
 
-/* Group Custom Extensions */
 .group-chat-header {
   box-shadow: 0 8px 25px rgba(0,0,0,.25);
 }
@@ -991,7 +974,6 @@ button:hover {
 .group-chat-header p {
   font-size: 14px;
 }
-
 
 /* ==========================================
    11. APPLAYOUT SPECIFIC SIDEBAR
@@ -1028,16 +1010,47 @@ button:hover {
   background: #1e293b;
 }
 
-/* REPLACED FIX 4: Applied strict dynamic parameters enforcing uniform dimension calculations across button sets */
-.edit-btn,
-.create-btn {
-  width: 56px;
-  height: 56px;
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  background: transparent;
+}
+
+.app-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 30px 38px 48px;
+}
+
+.app-content .feed-container,
+.app-content .profile-page {
+  margin: 0 auto;
+}
+
+.app-content .feed-title {
+  text-align: left;
+  margin: 8px 0 28px;
+  letter-spacing: -0.035em;
+  font-size: clamp(30px, 4vw, 42px);
+}
+
+.app-content .post-card {
+  background: linear-gradient(145deg, rgba(28, 41, 65, .96), rgba(18, 28, 47, .96));
+}
+
+/* Specific class for Home Page buttons */
+.home-icon-btn {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
   padding: 0;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 24px;
+  font-weight: bold;
 }
 
 /* ==========================================
@@ -1045,7 +1058,7 @@ button:hover {
    ========================================== */
 @media (max-width: 768px) {
   .feed-main-content {
-    margin-left: 0 !important; /* Clears sidebar offsets completely on mobile */
+    margin-left: 0 !important;
     padding: 12px;
   }
 
@@ -1055,7 +1068,11 @@ button:hover {
   }
   
   .app-sidebar {
-    display: none; /* Hide standard desktop sidebar on mobile views */
+    display: none;
+  }
+
+  .app-content {
+    padding: 18px 14px 32px;
   }
 
   .post-card {
@@ -1175,4 +1192,328 @@ button:hover {
   font-size: 12px;
   margin-left: 8px;
   font-weight: 700;
+}
+
+/* Virtual Data Room */
+.vdr-page { max-width: 1180px; margin: 0 auto; padding: 38px; color: var(--text); }
+.vdr-hero { display: flex; justify-content: space-between; gap: 24px; align-items: start; padding: 32px; border: 1px solid var(--border); border-radius: 22px; background: linear-gradient(125deg, #182a50, #15223a 60%, #12332e); box-shadow: var(--shadow); }
+.vdr-hero span { color: #93c5fd; font-size: 12px; font-weight: 800; letter-spacing: .12em; }.vdr-hero h1 { margin: 8px 0; font-size: clamp(28px, 4vw, 42px); }.vdr-hero p { color: var(--text-muted); margin: 0; }
+.vdr-access { white-space: nowrap; padding: 8px 12px; border-radius: 999px; background: rgba(34,197,94,.16); color: #86efac !important; letter-spacing: 0 !important; }
+.vdr-room-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }.vdr-room-tabs button { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; }.vdr-room-tabs button.active { background: var(--primary); color: white; }
+.vdr-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }.vdr-stats article, .vdr-upload, .vdr-documents { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 20px; }.vdr-stats span { display: block; color: var(--text-muted); font-size: 13px; }.vdr-stats strong { display: block; margin-top: 8px; font-size: 21px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vdr-upload { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto auto; gap: 12px; align-items: center; margin: 24px 0; }.vdr-upload h2 { grid-column: 1 / -1; margin: 0; font-size: 19px; }.vdr-upload input, .vdr-upload select { padding: 10px; border-radius: 9px; }.vdr-upload label { color: var(--text-muted); font-size: 14px; white-space: nowrap; }.vdr-upload .create-btn { width: auto; }
+.vdr-documents h2 { margin-top: 0; }.vdr-document { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 16px 0; border-bottom: 1px solid var(--border); }.vdr-document:last-child { border-bottom: 0; }.vdr-document span { color: #93c5fd; font-size: 12px; font-weight: 700; }.vdr-document h3 { margin: 5px 0; }.vdr-document p, .vdr-empty { color: var(--text-muted); }.vdr-document button, .vdr-viewer button { background: var(--primary); border: 0; border-radius: 9px; color: white; padding: 9px 13px; cursor: pointer; white-space: nowrap; }
+.vdr-viewer { width: min(1100px, 95vw); height: min(760px, 90vh); display: flex; flex-direction: column; background: #0e1728; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }.vdr-viewer-header, .vdr-viewer-footer { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 14px 18px; background: var(--surface); }.vdr-viewer-header span { display: block; color: var(--text-muted); font-size: 12px; margin-top: 2px; }.vdr-preview { flex: 1; min-height: 0; background: #020617; display: grid; place-items: center; }.vdr-preview iframe, .vdr-preview img { width: 100%; height: 100%; border: 0; object-fit: contain; }.vdr-viewer-footer { color: var(--text-muted); font-size: 13px; }.vdr-viewer-footer a { color: #93c5fd; }
+@media (max-width: 768px) { .vdr-page { padding: 18px 14px; }.vdr-hero, .vdr-document, .vdr-viewer-footer { align-items: stretch; flex-direction: column; }.vdr-stats { grid-template-columns: repeat(2, 1fr); }.vdr-upload { grid-template-columns: 1fr; }.vdr-upload h2 { grid-column: auto; }.vdr-upload .create-btn { width: 100%; } }
+
+/* Meeting workspace */
+.meeting-page { max-width: 1080px; margin: 0 auto; }
+.meeting-page > h1 { font-size: clamp(30px, 4vw, 42px); letter-spacing: -0.035em; margin-bottom: 6px; }
+.meeting-panel { border: 1px solid var(--border) !important; box-shadow: var(--shadow); background: linear-gradient(145deg, rgba(29, 43, 69, .96), rgba(18, 28, 47, .96)) !important; }
+.meeting-panel h2 { margin-top: 0; font-size: 21px; }
+.meeting-panel input { transition: border-color .2s ease, box-shadow .2s ease; }
+.meeting-panel [style*="maxHeight"] > div { transition: transform .18s ease, border-color .18s ease; }
+.meeting-panel [style*="maxHeight"] > div:hover { transform: translateY(-1px); border-color: rgba(96, 165, 250, .6) !important; }
+.meeting-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; }
+.meeting-card { margin-bottom: 0 !important; border: 1px solid var(--border); box-shadow: 0 10px 24px rgba(2, 6, 23, .2); background: linear-gradient(145deg, rgba(28, 41, 65, .95), rgba(18, 28, 47, .95)) !important; }
+.meeting-card h3 { color: #bfdbfe; margin-top: 0; }.meeting-card p { color: var(--text-muted); line-height: 1.65; }.meeting-card p:nth-of-type(3) { color: #e2e8f0; font-weight: 600; }
+@media (max-width: 640px) { .meeting-list { grid-template-columns: 1fr; }.meeting-panel [style*="display: flex"] { flex-direction: column; }.meeting-panel button { width: 100%; } }
+
+/* Profile workspace */
+.profile-page { max-width: 1040px; padding-top: 8px !important; }
+.profile-banner { height: 260px; border: 1px solid rgba(148, 163, 184, .2); background: radial-gradient(circle at 16% 22%, rgba(147, 197, 253, .48), transparent 30%), linear-gradient(115deg, #1e3a8a, #312e81 52%, #0f766e); box-shadow: var(--shadow); }
+.profile-header { margin-left: 30px; margin-right: 30px; padding: 22px 26px; border: 1px solid var(--border); border-radius: 18px; background: rgba(19, 30, 49, .9); backdrop-filter: blur(16px); box-shadow: var(--shadow); }
+.profile-avatar-large { background-color: #1d4ed8; box-shadow: 0 0 0 6px rgba(15, 23, 42, .9), 0 14px 34px rgba(2, 6, 23, .34); }
+.profile-info h1 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -.035em; }.profile-role { background: rgba(79, 124, 255, .16); border: 1px solid rgba(147, 197, 253, .3); color: #bfdbfe; padding: 5px 10px; border-radius: 999px; font-weight: 700; }
+.profile-actions { display: flex; gap: 10px; margin: 18px 30px 0 !important; }.profile-actions button { width: auto; min-width: 132px; }
+.profile-stats { gap: 14px; }.stat-card { background: linear-gradient(145deg, rgba(38, 55, 84, .92), rgba(27, 40, 63, .92)); border: 1px solid var(--border); box-shadow: 0 10px 20px rgba(2,6,23,.18); transition: transform .18s ease, border-color .18s ease; }.stat-card:hover { transform: translateY(-3px); border-color: rgba(96, 165, 250, .55); }.stat-card h2 { color: #dbeafe; font-size: 26px; }
+.profile-settings { border-top: 3px solid #4f7cff !important; }.profile-settings h2 { letter-spacing: -.025em; }.profile-settings input[type="file"] { padding: 10px; border: 1px dashed rgba(148, 163, 184, .35); border-radius: 10px; width: 100%; color: var(--text-muted); }
+.profile-tabs { display: flex; gap: 8px; padding: 7px; border: 1px solid var(--border); border-radius: 14px; background: rgba(15, 23, 42, .72); }.profile-tabs button { flex: 1; min-width: 0; }.profile-tabs .edit-btn { background: transparent; color: var(--text-muted); }
+.profile-posts-grid { gap: 14px; }.profile-post-item { border: 1px solid var(--border); box-shadow: 0 8px 18px rgba(2,6,23,.2); }.profile-text-post { background: linear-gradient(145deg, #263a60, #1a2945); }
+@media (max-width: 768px) { .profile-page { padding: 0 !important; }.profile-banner { height: 170px; border-radius: 14px; }.profile-header { margin-left: 0; margin-right: 0; padding: 18px; }.profile-actions { margin-left: 0 !important; margin-right: 0 !important; }.profile-actions button { flex: 1; min-width: 0; }.profile-tabs { overflow-x: auto; }.profile-tabs button { min-width: 100px; }.profile-posts-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Notification center */
+.notifications-actions { display: flex; justify-content: flex-end; padding-bottom: 10px; border-bottom: 1px solid var(--border); }.notifications-actions button { width: auto; }
+.notification-card { position: relative; overflow: hidden; margin-bottom: 12px; border-left-color: #4f7cff !important; transition: transform .18s ease, border-color .18s ease; }.notification-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: linear-gradient(#60a5fa, #818cf8); }.notification-card:hover { transform: translateX(4px); border-color: rgba(96,165,250,.45) !important; }.notification-content { padding-left: 8px; }.notification-content > p:first-child { color: #e8eefb; }.notification-content > p:last-child { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: rgba(148,163,184,.1); }
+@media (max-width: 640px) { .notifications-actions { justify-content: stretch; }.notifications-actions button { flex: 1; }.notification-card { padding: 16px; } }
+
+/* Groups workspace */
+.group-workspace { border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); background: #0b1324; }
+.group-workspace [data-group-sidebar="true"] { background: linear-gradient(180deg, rgba(20, 32, 53, .98), rgba(12, 21, 37, .98)) !important; border-right-color: var(--border) !important; }
+.group-workspace [data-group-sidebar="true"] > h3 { font-size: 26px; letter-spacing: -.03em; margin: 0 0 20px; }.group-workspace [data-group-sidebar="true"] input { border: 1px solid var(--border) !important; }
+.group-workspace .chat-user-row { border: 1px solid transparent; }.group-workspace .chat-user-row:hover, .group-workspace .chat-user-row.active-row { border-color: rgba(96, 165, 250, .35) !important; background: rgba(79, 124, 255, .14) !important; }.group-workspace .chat-user-row h3 { font-size: 15px; }.group-empty-state { text-align: center; background: radial-gradient(circle at center, rgba(79,124,255,.12), transparent 46%); }.group-empty-state h2 { color: #dbeafe; letter-spacing: -.03em; }.group-empty-state p { max-width: 320px; line-height: 1.65; }
+@media (max-width: 768px) { .group-workspace { height: auto !important; min-height: calc(100vh - 50px); border-radius: 14px; }.group-workspace [data-group-sidebar="true"] { width: 100% !important; min-width: 100% !important; max-width: none !important; }.group-workspace .chat-empty-area { display: none !important; } }
+
+/* Direct messaging workspace */
+.chat-directory-workspace { border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); background: #0b1324; }.chat-directory-workspace .chat-users-panel { background: linear-gradient(180deg, rgba(21, 34, 56, .98), rgba(11, 20, 35, .98)); border-right-color: var(--border); }.chat-directory-workspace .chat-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 20px 14px; }.chat-directory-workspace .chat-panel-header h2 { margin: 0; letter-spacing: -.03em; }.chat-directory-workspace .chat-search { width: calc(100% - 30px); border: 1px solid var(--border); background: rgba(15,23,42,.8); }.chat-directory-workspace .chat-user-row { margin: 4px 10px; border: 1px solid transparent; border-radius: 13px; }.chat-directory-workspace .chat-user-row:hover, .chat-directory-workspace .chat-user-row.active-row { background: rgba(79,124,255,.14) !important; border-color: rgba(96,165,250,.32); }.chat-directory-workspace .chat-user-avatar { box-shadow: 0 0 0 3px rgba(79,124,255,.13); }.chat-directory-workspace .chat-empty-area { background: radial-gradient(circle at center, rgba(79,124,255,.11), transparent 42%); }.chat-empty-state { text-align: center; color: var(--text-muted); }.chat-empty-state h2 { color: #dbeafe; letter-spacing: -.03em; }
+.instagram-chat-layout { background: #0c1628; }.instagram-chat-header { margin-bottom: 0 !important; padding: 16px 22px; background: rgba(20,33,55,.94); border-bottom: 1px solid var(--border); box-shadow: 0 8px 20px rgba(2,6,23,.15); }.instagram-chat-header .chat-avatar { box-shadow: 0 0 0 3px rgba(79,124,255,.18); }.chat-header-actions .header-icon-btn { width: 34px; height: 34px; border-radius: 9px !important; background: rgba(148,163,184,.09) !important; transition: background .18s ease; }.chat-header-actions .header-icon-btn:hover { background: rgba(79,124,255,.24) !important; }.instagram-message-area { padding: 22px; background: radial-gradient(circle at 30% 0%, rgba(79,124,255,.06), transparent 28rem); }.whatsapp-sent { background: linear-gradient(135deg, #3867f5, #4f7cff); box-shadow: 0 7px 16px rgba(30,64,175,.2); }.whatsapp-received { background: #22304a; }.instagram-chat-input-container { padding: 14px 20px; background: rgba(13,23,40,.96); border-top-color: var(--border); }.chat-input-bar { border: 1px solid var(--border); box-shadow: 0 6px 16px rgba(2,6,23,.16); }
+@media (max-width: 768px) { .chat-directory-workspace { border-radius: 14px; }.chat-directory-workspace .chat-users-panel { width: 100%; }.chat-directory-workspace .chat-empty-area { display: none !important; }.instagram-chat-header { padding: 13px; }.instagram-message-area { padding: 14px; }.instagram-chat-input-container { padding: 12px; } }
+
+/* WhatsApp-inspired message conversation */
+.instagram-message-area { scrollbar-color: rgba(148,163,184,.42) transparent; }.chat-messages { gap: 2px; }.message-row { padding: 0 4px; }.message-date-divider span { box-shadow: 0 4px 10px rgba(2,6,23,.2); border: 1px solid rgba(148,163,184,.12); }.message-bubble { min-width: 72px; padding: 8px 10px 6px; border: 1px solid rgba(255,255,255,.08); line-height: 1.45; }.message-row-sent .message-bubble { border-top-right-radius: 4px; }.message-row-received .message-bubble { border-top-left-radius: 4px; }.message-bubble img { box-shadow: 0 4px 10px rgba(2,6,23,.18); }.message-meta { color: rgba(226,232,240,.72) !important; opacity: 1 !important; }.message-reactions { opacity: .65; transition: opacity .16s ease; }.message-bubble:hover .message-reactions { opacity: 1; }.message-reactions button { border-radius: 6px !important; padding: 2px 4px; }.message-delete-actions { opacity: 0; max-height: 0; overflow: hidden; transition: opacity .16s ease, max-height .16s ease; }.message-bubble:hover .message-delete-actions { opacity: 1; max-height: 28px; }.chat-composer { box-shadow: 0 -10px 26px rgba(2,6,23,.18); }.chat-composer .chat-input-bar { background: #18243b !important; border-radius: 18px !important; }.chat-composer .chat-input-bar input { min-width: 0; }.chat-send-button { background: linear-gradient(135deg, #4f7cff, #3867f5) !important; box-shadow: 0 5px 12px rgba(56,103,245,.3); transition: transform .16s ease, box-shadow .16s ease; }.chat-send-button:hover { transform: scale(1.06); box-shadow: 0 7px 16px rgba(56,103,245,.4); }.chat-attachment-row { color: var(--text-muted); }.chat-attachment-row label, .chat-attachment-row button { padding: 5px 7px; border-radius: 7px; }.chat-attachment-row button:hover, .chat-attachment-row label:hover { background: rgba(148,163,184,.1) !important; }
+@media (max-width: 640px) { .message-bubble { max-width: 86% !important; }.message-delete-actions { opacity: 1; max-height: 28px; }.chat-header-actions { display: none !important; }.chat-attachment-row { gap: 8px; align-items: flex-start !important; flex-direction: column; } }
+
+/* ==========================================
+   12. ENTERPRISE VISUAL SYSTEM
+   ========================================== */
+:root {
+  --surface: #111a2e;
+  --surface-raised: #18243b;
+  --surface-muted: #22304a;
+  --border: rgba(148, 163, 184, 0.18);
+  --text: #f8fafc;
+  --text-muted: #a8b6ca;
+  --primary: #4f7cff;
+  --primary-strong: #3867f5;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --shadow: 0 18px 45px rgba(2, 6, 23, 0.28);
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(79, 124, 255, 0.16), transparent 30rem),
+    radial-gradient(circle at 96% 12%, rgba(34, 197, 94, 0.08), transparent 25rem),
+    #0b1220;
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(96, 165, 250, 0.7);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.58;
+  transform: none !important;
+}
+
+.feed-main-content {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 30px 38px 48px;
+}
+
+/* Most standalone pages use inline min-height styles. Keeping those layouts
+   while removing their hard-coded backdrop gives every route the same shell. */
+#root > div[style*="minHeight"] {
+  background: transparent !important;
+}
+
+/* Standalone routes (auth, onboarding, dashboards, agreements and admin)
+   use inline layout objects. These selectors give them the same composed
+   application surface without altering the data or event handlers in them. */
+#root > div[style*="minHeight"] {
+  padding: clamp(20px, 4vw, 48px) !important;
+}
+
+#root > div[style*="minHeight"] > h1,
+#root > div[style*="minHeight"] > h2 {
+  color: #f8fbff !important;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+#root > div[style*="minHeight"] > div[style] {
+  background: linear-gradient(145deg, rgba(27, 40, 64, 0.96), rgba(17, 27, 45, 0.96)) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow);
+}
+
+#root > div[style*="minHeight"] > div[style] h1,
+#root > div[style*="minHeight"] > div[style] h2,
+#root > div[style*="minHeight"] > div[style] h3 {
+  color: #f8fbff;
+  letter-spacing: -0.02em;
+}
+
+#root > div[style*="minHeight"] > div[style] p {
+  color: var(--text-muted);
+}
+
+#root > div[style*="minHeight"] > div[style] button:not(.sidebar-item) {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 5px 12px rgba(2, 6, 23, 0.16);
+}
+
+.chat-page-layout,
+.instagram-chat-layout {
+  background: transparent;
+}
+
+.chat-users-panel,
+.instagram-chat-header,
+.instagram-chat-input-container {
+  background: rgba(12, 20, 35, 0.88);
+  backdrop-filter: blur(16px);
+}
+
+.chat-user-row {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.chat-user-row:hover {
+  background: rgba(79, 124, 255, 0.12);
+}
+
+.my-message {
+  background: linear-gradient(135deg, #4f7cff, #3867f5);
+}
+
+.other-message,
+.whatsapp-received {
+  background: #22304a;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+@media (max-width: 768px) {
+  #root > div[style*="minHeight"] {
+    padding: 18px 14px !important;
+  }
+
+  #root > div[style*="minHeight"] > div[style] {
+    border-radius: 16px !important;
+  }
+
+  #root > div[style*="minHeight"] > div[style] > div[style*="display: flex"] {
+    flex-wrap: wrap;
+  }
+}
+
+.instagram-sidebar {
+  width: 88px;
+  background: rgba(8, 15, 30, 0.92);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid var(--border);
+  box-shadow: 10px 0 35px rgba(2, 6, 23, 0.2);
+}
+
+.instagram-sidebar:hover {
+  width: 268px;
+}
+
+.sidebar-logo {
+  letter-spacing: -0.02em;
+  color: #e5edff;
+}
+
+.sidebar-item {
+  color: #bac8dc;
+  margin-bottom: 7px;
+}
+
+.sidebar-item:hover {
+  color: white;
+  background: rgba(79, 124, 255, 0.18);
+}
+
+.search-box,
+.post-box textarea,
+.comment-input,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border: 1px solid var(--border) !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  color: var(--text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.search-box:focus,
+.post-box textarea:focus,
+.comment-input:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(96, 165, 250, 0.9) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+  outline: none;
+}
+
+.post-card,
+.post-box,
+.profile-card,
+.navbar,
+.dashboard-header,
+.chat-header,
+.modal-box,
+.create-post-modal {
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow);
+}
+
+.post-card,
+.post-box,
+.profile-card {
+  background: linear-gradient(145deg, rgba(28, 41, 65, 0.96), rgba(20, 30, 48, 0.96));
+}
+
+.post-card {
+  border-radius: 18px;
+}
+
+.post-card:hover {
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+
+.create-btn,
+.profile-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong)) !important;
+  box-shadow: 0 8px 18px rgba(56, 103, 245, 0.25);
+}
+
+.edit-btn {
+  background: #d99516;
+}
+
+.delete-btn {
+  background: #dc3f4c;
+}
+
+.comment,
+.comment-card,
+.stat-card {
+  border: 1px solid rgba(148, 163, 184, 0.13);
+}
+
+.feed-header {
+  background: rgba(17, 26, 46, 0.84);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.2);
+}
+
+@media (max-width: 768px) {
+  .feed-main-content {
+    padding: 18px 14px 32px;
+  }
+
+  .instagram-sidebar {
+    width: 64px !important;
+    padding: 16px 8px;
+  }
+
+  .post-card,
+  .post-box {
+    border-radius: 14px;
+  }
+
+  .post-actions > button {
+    flex: 1 1 calc(50% - 8px);
+  }
 }

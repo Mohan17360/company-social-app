@@ -123,11 +123,12 @@ function GroupsPage() {
 
   return (
     <AppLayout>
-      <div className="chat-page-layout" style={{ display: "flex", width: "100%", height: "100vh" }}>
+      <div className="chat-page-layout group-workspace" style={{ display: "flex", width: "100%", height: "100vh" }}>
         
         {/* Left Side Panel View Module (FIXED AT 380PX FOR PROPER TEXT RESPONSIVENESS) */}
         <div 
           className="chat-users-panel" 
+          data-group-sidebar="true"
           style={{ 
             width: "380px", 
             minWidth: "380px", 
@@ -236,7 +237,7 @@ function GroupsPage() {
           {selectedGroupId ? (
             <GroupChatPage key={selectedGroupId} embeddedGroupId={selectedGroupId} embedded={true} />
           ) : (
-            <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "#94a3b8", padding: "20px", boxSizing: "border-box" }}>
+            <div className="group-empty-state" style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "#94a3b8", padding: "20px", boxSizing: "border-box" }}>
               <h2>Select a Group Panel</h2>
               <p>Choose a discussion room from the left grid to open communication.</p>
             </div>

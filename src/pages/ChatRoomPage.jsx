@@ -21,7 +21,10 @@ import { auth, db } from "../firebase"; // Storage core library references purge
 import EmojiPicker from "emoji-picker-react"; 
 
 // Imported clear optimized storage utility bridge module
-import { uploadToCloudinary } from "../utils/cloudinaryUpload";
+import {
+  uploadToCloudinary,
+  uploadDocumentToCloudinary,
+} from "../services/cloudinaryUpload";
 
 // Function arguments structurally updated to accept wrapper properties
 function ChatRoomPage({
@@ -371,7 +374,7 @@ function ChatRoomPage({
           createdAt: serverTimestamp(),
           read: false,
           delivered: true, 
-          seen: false      
+          seen: false 
         });
       };
     } catch (error) {
@@ -394,12 +397,13 @@ function ChatRoomPage({
 
       // Step 3 Fix: Modernized using secure asynchronous Cloudinary lookup utility methods
       if (selectedImage) {
-        imageUrl = await uploadToCloudinary(selectedImage);
+        const uploadResult = await uploadToCloudinary(selectedImage);
+        imageUrl = uploadResult.url;
       }
 
-      // Step 4 Fix: Modernized using secure asynchronous Cloudinary lookup utility methods
+      // ✅ Option 2 Fixed: Resolved ESLint unused import warning by leveraging uploadDocumentToCloudinary utility handler
       if (selectedFile) {
-        fileUrl = await uploadToCloudinary(selectedFile);
+        fileUrl = await uploadDocumentToCloudinary(selectedFile);
         fileName = selectedFile.name;
       }
 
@@ -420,7 +424,7 @@ function ChatRoomPage({
         createdAt: serverTimestamp(),
         read: false,
         delivered: true, 
-        seen: false      
+        seen: false 
       });
 
       setMessage("");
@@ -657,7 +661,7 @@ function ChatRoomPage({
                 return (
                   <React.Fragment key={msg.id}>
                     {showDate && currentDate && (
-                      <div style={{ textAlign: "center", margin: "15px 0" }}>
+                      <div className="message-date-divider" style={{ textAlign: "center", margin: "15px 0" }}>
                         <span
                           style={{
                             background: "#1e293b",
@@ -674,13 +678,14 @@ function ChatRoomPage({
                     )}
 
                     <div
+                      className={`message-row ${isMine ? "message-row-sent" : "message-row-received"}`}
                       style={{
                         display: "flex",
                         justifyContent: isMine ? "flex-end" : "flex-start",
                         marginBottom: "8px",
                       }}
                     >
-                      <div className={isMine ? "whatsapp-sent" : "whatsapp-received"} style={{ position: "relative", maxWidth: "70%" }}>
+                      <div className={`message-bubble ${isMine ? "whatsapp-sent" : "whatsapp-received"}`} style={{ position: "relative", maxWidth: "70%" }}>
                         
                         {!isMine && msg.senderName && (
                           <div className="sender-name" style={{ fontWeight: "bold", fontSize: "12px", color: "#34d399", marginBottom: "4px" }}>
@@ -794,7 +799,7 @@ function ChatRoomPage({
                         )}
 
                         {!msg.deleted && (
-                          <div style={{ display: "flex", gap: "3px", marginTop: "4px", justifyContent: isMine ? "flex-end" : "flex-start" }}>
+                          <div className="message-reactions" style={{ display: "flex", gap: "3px", marginTop: "4px", justifyContent: isMine ? "flex-end" : "flex-start" }}>
                             <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px" }} onClick={() => handleReaction(msg.id, "👍")}>👍</button>
                             <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px" }} onClick={() => handleReaction(msg.id, "❤️")}>❤️</button>
                             <button style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px" }} onClick={() => handleReaction(msg.id, "😂")}>😂</button>
@@ -808,7 +813,7 @@ function ChatRoomPage({
                         )}
 
                         {isMine && !msg.deleted && (
-                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", marginTop: "4px" }}>
+                        <div className="message-delete-actions" style={{ display: "flex", gap: "6px", justifyContent: "flex-end", marginTop: "4px" }}>
                             <button onClick={() => handleDeleteMessage(msg.id, false)} style={{ fontSize: "9px", background: "#ef4444", color: "white", border: "none", borderRadius: "3px", cursor: "pointer", padding: "2px 5px" }}>
                               Delete For Me
                             </button>
@@ -843,7 +848,7 @@ function ChatRoomPage({
           </div>
         )}
 
-        <div className="instagram-chat-input-container" style={{ position: "relative", flexShrink: 0, marginTop: "auto", paddingTop: "10px" }}>
+        <div className="instagram-chat-input-container chat-composer" style={{ position: "relative", flexShrink: 0, marginTop: "auto", paddingTop: "10px" }}>
           {showEmojiPicker && (
             <div ref={emojiRef} style={{ marginBottom: "12px", position: "absolute", bottom: "80px", zIndex: 200 }}>
               <EmojiPicker onEmojiClick={handleEmojiClick} />
@@ -945,6 +950,7 @@ function ChatRoomPage({
             />
 
             <button
+              className="chat-send-button"
               onClick={handleSend}
               style={{ background: "#2563eb", color: "white", border: "none", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "16px" }}
             >
@@ -952,7 +958,7 @@ function ChatRoomPage({
             </button>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", padding: "0 8px" }}>
+          <div className="chat-attachment-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", padding: "0 8px" }}>
             <div>
               <label style={{ fontSize: "12px", color: "#64748b", marginRight: "6px", cursor: "pointer" }}>
                 📸 Attach Image

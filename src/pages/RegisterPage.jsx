@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 // Step 1: Updated imports to include getDoc
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 // Step B: Imported the useNavigate hook from react-router-dom
 import { useNavigate } from "react-router-dom";
@@ -75,23 +75,31 @@ function RegisterPage() {
 
       const user = userCredential.user;
 
-      // Replaced role logic code to route registrations into an administrative queue
+      // Replaced old queue system fields to map required strict identity schema parameters
       await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
         name,
         email,
-        role: "Pending",
-        requestedRole: role,
-        approvalStatus: "Pending",
-        photo: photoURL,
-        createdAt: new Date(),
-        online: false,
-        isBanned: false,
+        role, // founder | investor | freelancer mapping channel
+        verified: false,
+        verificationSubmitted: false,
+        signatureSubmitted: false,
+        photo: photoURL, // Retaining cloud image pointer payload reference safely
+        createdAt: serverTimestamp(),
       });
 
       alert("Registration Successful!");
       
-      // Replaced old window location assignment to ensure smooth Client-Side Routing
-      navigate("/feed");
+      // Replaced old standard redirect path to securely map dynamic onboarding routes based on selected user roles
+      if (role === "Founder") {
+        navigate("/founder-verification");
+      } else if (role === "Investor") {
+        navigate("/investor-verification");
+      } else if (role === "Freelancer") {
+        navigate("/freelancer-verification");
+      } else {
+        navigate("/feed");
+      }
     } catch (error) {
       alert(error.message);
     }
@@ -260,7 +268,7 @@ function RegisterPage() {
             cursor: "pointer"
           }}
         >
-          <option value="Owner">Owner</option>
+          <option value="Founder">Founder</option>
           <option value="Investor">Investor</option>
           <option value="Freelancer">Freelancer</option>
         </select>

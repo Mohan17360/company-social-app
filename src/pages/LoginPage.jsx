@@ -1,6 +1,9 @@
+// src/pages/LoginPage.jsx
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+// Integrated required Firestore document reading modules safely
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase"; // Adjusted default import line references
 // Step B: Imported the useNavigate hook from react-router-dom
 import { useNavigate } from "react-router-dom";
 
@@ -11,17 +14,37 @@ function LoginPage() {
   // Step C: Initialized the navigate variable instance
   const navigate = useNavigate();
 
+  // Replaced sequential plain redirection pipeline with clear, robust async role checks matrix
   const handleLogin = async () => {
     try {
-      await signInWithEmailAndPassword(
+      const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
 
+      const user = userCredential.user;
+
+      // Extract current logged-in account record profile parameters
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+
       alert("Login Successful!");
-      // Replaced old window location assignment to ensure smooth Client-Side Routing
-      navigate("/feed");
+
+      // Added temporarily: Trace parameter validation metrics
+      console.log("ROLE =", userData?.role);
+
+      // Dynamic Role-Based Route Validation Engine (Updated with Step 2 Debug Hook)
+      if (userData?.role === "Founder") {
+        console.log("GOING TO FOUNDER DASHBOARD");
+        navigate("/founder-dashboard");
+      } else if (userData?.role === "Investor") {
+        navigate("/investor-dashboard");
+      } else if (userData?.role === "Freelancer") {
+        navigate("/freelancer-dashboard");
+      } else {
+        navigate("/feed");
+      }
     } catch (error) {
       alert(error.message);
     }
@@ -70,14 +93,14 @@ function LoginPage() {
             className="edit-btn"
             onClick={() => navigate(-1)}
           >
-            ← Back
+            &larr; Back
           </button>
 
           <button
             className="create-btn"
             onClick={() => window.location.reload()}
           >
-            ↻ Refresh
+            &#8635; Refresh
           </button>
         </div>
 
@@ -96,6 +119,7 @@ function LoginPage() {
             border: "none",
             background: "#334155",
             color: "white",
+            boxSizing: "border-box"
           }}
         />
 
@@ -114,12 +138,14 @@ function LoginPage() {
             border: "none",
             background: "#334155",
             color: "white",
+            boxSizing: "border-box"
           }}
         />
 
         <button
           className="create-btn"
           onClick={handleLogin}
+          style={{ width: "100%", padding: "14px", fontWeight: "600" }}
         >
           Login
         </button>

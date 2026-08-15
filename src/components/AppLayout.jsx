@@ -2,22 +2,12 @@ import Sidebar from "./Sidebar";
 
 function AppLayout({ children }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-      }}
-    >
+    <div className="app-shell">
       <Sidebar />
 
-      <div
-        style={{
-          flex: 1,
-          overflow: "auto",
-        }}
-      >
+      <main className="app-content">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

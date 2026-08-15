@@ -9,7 +9,6 @@ import {
   query,      
   where,      
   getDocs,
-  // Step 8.2: Imported addDoc (Cleaned up serverTimestamp reference to resolve lint warning)
   addDoc,
   setDoc,
   getDoc    
@@ -181,7 +180,7 @@ function AdminPage() {
     };
   }, []);
 
-  // STEP 1: Global Logging Master Helper Pipeline Function Refactored
+  // GLOBAL LOGGING MASTER HELPER PIPELINE FUNCTION
   const createActivityLog = async (action, target) => {
     try {
       await addDoc(collection(db, "activityLogs"), {
@@ -278,6 +277,19 @@ function AdminPage() {
       alert(`Registration request handled as ${isApproved ? "Approved" : "Rejected"}.`);
     } catch (error) {
       console.error("Failed to commit role moderation action updates:", error);
+      alert(error.message);
+    }
+  };
+
+  // Renamed to handleVerificationApproval to support all roles onboarding checks universally
+  const handleVerificationApproval = async (userId, approved) => {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        verified: approved,
+        verificationStatus: approved ? "Approved" : "Rejected",
+      });
+      alert(approved ? "Verification Approved" : "Verification Rejected");
+    } catch (error) {
       alert(error.message);
     }
   };
@@ -384,11 +396,34 @@ function AdminPage() {
   // Filter out user profiles restricted purely to administrative privileges
   const adminUsers = users.filter((user) => user.role === "Admin");
 
+  // Step 1 Integration: Instantiated the conditional active pending Founders lookup trace
+  const pendingFounders = users.filter(
+    (user) =>
+      user.role === "Founder" &&
+      user.verificationSubmitted === true &&
+      user.verified !== true
+  );
+
+  // Added conditional filters to parse remaining onboarding user types categories
+  const pendingInvestors = users.filter(
+    (user) =>
+      user.role === "Investor" &&
+      user.verificationSubmitted === true &&
+      user.verified !== true
+  );
+
+  const pendingFreelancers = users.filter(
+    (user) =>
+      user.role === "Freelancer" &&
+      user.verificationSubmitted === true &&
+      user.verified !== true
+  );
+
   return (
     <div className="feed-container">
       <h1 className="feed-title">Admin Dashboard</h1>
 
-      {/* Step 2: Sidebar Layout Start (Flex layout container) */}
+      {/* Sidebar Layout Start (Flex layout container) */}
       <div
         style={{
           display: "flex",
@@ -396,7 +431,7 @@ function AdminPage() {
           alignItems: "flex-start",
         }}
       >
-        {/* Step 3: Add Sidebar Components Dashboard Controller Row */}
+        {/* Sidebar Components Dashboard Controller Row */}
         <div
           style={{
             width: "230px",
@@ -441,6 +476,48 @@ function AdminPage() {
               📋 Role Requests {pendingRoleRequests.length > 0 && `(${pendingRoleRequests.length})`}
             </button>
 
+            {/* Step 2 Integration: Added responsive navigation panel link targeting specialized founder approvals tab */}
+            <button
+              className="create-btn"
+              style={{
+                width: "100%",
+                marginBottom: "10px",
+                backgroundColor: activeTab === "founderVerification" ? "#2563eb" : ""
+              }}
+              onClick={() => setActiveTab("founderVerification")}
+            >
+              🏢 Founder Verifications
+              {pendingFounders.length > 0 && ` (${pendingFounders.length})`}
+            </button>
+
+            {/* Added Sidebar Navigation control options tracking Investor verification tabs */}
+            <button
+              className="create-btn"
+              style={{
+                width: "100%",
+                marginBottom: "10px",
+                backgroundColor: activeTab === "investorVerification" ? "#2563eb" : ""
+              }}
+              onClick={() => setActiveTab("investorVerification")}
+            >
+              💰 Investor Verifications
+              {pendingInvestors.length > 0 && ` (${pendingInvestors.length})`}
+            </button>
+
+            {/* Added Sidebar Navigation control options tracking Freelancer verification tabs */}
+            <button
+              className="create-btn"
+              style={{
+                width: "100%",
+                marginBottom: "10px",
+                backgroundColor: activeTab === "freelancerVerification" ? "#2563eb" : ""
+              }}
+              onClick={() => setActiveTab("freelancerVerification")}
+            >
+              👨‍💻 Freelancer Verifications
+              {pendingFreelancers.length > 0 && ` (${pendingFreelancers.length})`}
+            </button>
+
             <button
               className="create-btn"
               style={{
@@ -469,11 +546,25 @@ function AdminPage() {
               className="create-btn"
               style={{
                 width: "100%",
+                marginBottom: "10px",
                 backgroundColor: activeTab === "activity" ? "#2563eb" : ""
               }}
               onClick={() => setActiveTab("activity")}
             >
               📜 Activity
+            </button>
+
+            {/* Added: Interactive Agreements Management Link directly using useNavigate hook triggers */}
+            <button
+              className="create-btn"
+              onClick={() => navigate("/admin-agreements")}
+              style={{
+                width: "100%",
+                marginBottom: "10px",
+                fontWeight: "600"
+              }}
+            >
+              📄 Manage Agreements
             </button>
 
             {/* Step 5: Wrapped Settings layout option to protect module access routes */}
@@ -496,7 +587,7 @@ function AdminPage() {
         {/* Dynamic Context Right Content Container Box Segment */}
         <div style={{ flex: 1 }}>
 
-          {/* Step C: Injected Back and Refresh dashboard controls row */}
+          {/* Injected Back and Refresh dashboard controls row */}
           <div
             style={{
               display: "flex",
@@ -540,7 +631,7 @@ function AdminPage() {
           {/* Dashboard Tab Wrapper Node */}
           {activeTab === "dashboard" && (
             <>
-              {/* Step 6: Upgraded Platform Summary Analytics Extended Matrix Card */}
+              {/* Upgraded Platform Summary Analytics Extended Matrix Card */}
               <div 
                 className="post-card" 
                 style={{ 
@@ -592,7 +683,7 @@ function AdminPage() {
                           <span style={{
                             background: "#dc2626",
                             color: "white",
-                            padding: "3px 8px",
+                            padding: "33px 8px",
                             borderRadius: "12px",
                             marginLeft: "10px",
                             fontSize: "11px",
@@ -622,7 +713,6 @@ function AdminPage() {
           {/* Reports Tab Wrapper Node */}
           {activeTab === "reports" && (
             <>
-              {/* Content Moderation / Incoming Reports Review Workspace Node */}
               <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
                 Reported Content Feed
               </h2>
@@ -687,7 +777,6 @@ function AdminPage() {
           {/* Posts Tab Wrapper Node */}
           {activeTab === "posts" && (
             <>
-              {/* Content Moderation / Global Post Management Stream Node */}
               <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
                 All Platform Posts
               </h2>
@@ -722,7 +811,7 @@ function AdminPage() {
             </>
           )}
 
-          {/* STEP 2: Activity Tab Wrapper Upgraded Layout Node */}
+          {/* Activity Tab Wrapper Node */}
           {activeTab === "activity" && (
             <>
               <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
@@ -766,175 +855,177 @@ function AdminPage() {
             </>
           )}
 
-          {/* Users Tab Wrapper Node */}
-          {activeTab === "users" && (
+          {/* Founder Verification Tab Content Segment */}
+          {activeTab === "founderVerification" && (
             <>
-              {/* Dynamic Account Registry Mapping Stream Node */}
-              <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px" }}>User Management</h2>
-              
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <div 
-                    key={user.id} 
-                    className="post-card"
-                    style={{
-                      opacity: user.isBanned ? 0.65 : 1,
-                      borderRight: user.isBanned ? "6px solid #f59e0b" : "none",
-                      transition: "all 0.2s ease-in-out"
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                      <div style={{ flexGrow: 1 }}>
-                        <h3 style={{ margin: "0 0 5px 0", display: "flex", alignItems: "center" }}>
-                          {user.name || "Anonymous User"} 
-                          
-                          {/* Show descriptive high-priority background identifier label */}
-                          {user.email === SUPER_ADMIN_EMAIL && (
-                            <span style={{
-                              background: "#dc2626",
-                              color: "white",
-                              padding: "2px 8px",
-                              borderRadius: "12px",
-                              fontSize: "11px",
-                              marginLeft: "10px",
-                              fontWeight: "700"
-                            }}>
-                              SUPER ADMIN
-                            </span>
-                          )}
-
-                          {user.isBanned && (
-                            <span style={{ 
-                              color: "#d97706", 
-                              background: "#fef3c7", 
-                              fontSize: "12px", 
-                              padding: "2px 8px", 
-                              borderRadius: "12px", 
-                              marginLeft: "10px",
-                              fontWeight: "600"
-                            }}>
-                              Account Suspended
-                            </span>
-                          )}
-                        </h3>
-                        <p style={{ margin: "0 0 12px 0", color: "#64748b", fontSize: "14px" }}>{user.email}</p>
+              <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
+                Founder Identity Verification Queue
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+                {pendingFounders.length > 0 ? (
+                  pendingFounders.map((founder) => (
+                    <div key={founder.id} className="post-card" style={{ borderLeft: "5px solid #2563eb" }}>
+                      <h3 style={{ margin: "0 0 5px 0" }}>🏢 {founder.name}</h3>
+                      <p style={{ margin: "0 0 10px 0", color: "#64748b", fontSize: "14px" }}>{founder.email}</p>
+                      
+                      <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+                        <button
+                          onClick={() => handleVerificationApproval(founder.id, true)}
+                          style={{
+                            backgroundColor: "#22c55e",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✓ Approve Identity
+                        </button>
+                        <button
+                          onClick={() => handleVerificationApproval(founder.id, false)}
+                          style={{
+                            backgroundColor: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✕ Reject Request
+                        </button>
                       </div>
                     </div>
-                    
-                    {/* Upgraded Dropdown element block with hierarchy check hooks */}
-                    <div style={{ margin: "12px 0", display: "flex", alignItems: "center", gap: "10px" }}>
-                      <label htmlFor={`role-${user.id}`} style={{ fontWeight: "600", fontSize: "14px", color: "#475569" }}>
-                        Assigned Platform Role:
-                      </label>
-                      <select
-                        id={`role-${user.id}`}
-                        value={user.role || "Freelancer"}
-                        disabled={!isSuperAdmin || user.email === SUPER_ADMIN_EMAIL}
-                        onChange={(e) => {
-                          // FIXED HIERARCHY PROTECTION CHECK: Super Admin bypasses closure roadblocks
-                          if (user.role === "Admin" && !isSuperAdmin) {
-                            alert("Admins cannot modify other Admin accounts.");
-                            return;
-                          }
-                          // STEP 3: Adjusted handler parameters to supply email parameters into loggers
-                          handleRoleChange(user.id, user.email, e.target.value);
-                        }}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: "4px",
-                          border: "1px solid #cbd5e1",
-                          backgroundColor: (!isSuperAdmin || user.email === SUPER_ADMIN_EMAIL) ? "#e2e8f0" : "#ffffff",
-                          fontSize: "14px",
-                          cursor: (!isSuperAdmin || user.email === SUPER_ADMIN_EMAIL) ? "not-allowed" : "pointer",
-                          fontWeight: "500"
-                        }}
-                      >
-                        {/* Step 4: Hide Admin Option from standard management dropdown array list updates */}
-                        {isSuperAdmin && <option value="Admin">Admin</option>}
-                        <option value="Owner">Owner</option>
-                        <option value="Investor">Investor</option>
-                        <option value="Freelancer">Freelancer</option>
-                      </select>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "20px", margin: "10px 0", fontSize: "13px", color: "#64748b" }}>
-                      <span><strong>Followers Count:</strong> {user.followers?.length || 0}</span>
-                      <span><strong>Following Count:</strong> {user.following?.length || 0}</span>
-                    </div>
-
-                    {/* Context Execution Interaction Wrapper Control Tray */}
-                    <div style={{ display: "flex", gap: "10px", marginTop: "15px", borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
-                      
-                      {/* Upgraded Suspension Button with mutual Admin protection safeguards */}
-                      <button
-                        disabled={user.email === SUPER_ADMIN_EMAIL}
-                        onClick={() => {
-                          if (user.email === SUPER_ADMIN_EMAIL) {
-                            alert("Super Admin account cannot be suspended.");
-                            return;
-                          }
-                          // FIXED HIERARCHY SUSPENSION CHECK: Super Admin bypasses closure roadblocks
-                          if (user.role === "Admin" && !isSuperAdmin) {
-                            alert("Admin accounts cannot be suspended.");
-                            return;
-                          }
-                          handleBanUser(user.id, user.email, !!user.isBanned);
-                        }}
-                        style={{
-                          backgroundColor: user.isBanned ? "#22c55e" : "#ea580c",
-                          color: "white",
-                          border: "none",
-                          padding: "8px 16px",
-                          borderRadius: "4px",
-                          fontWeight: "600",
-                          fontSize: "13px",
-                          opacity: user.email === SUPER_ADMIN_EMAIL ? 0.5 : 1,
-                          cursor: user.email === SUPER_ADMIN_EMAIL ? "not-allowed" : "pointer",
-                          transition: "all 0.2s ease"
-                        }}
-                      >
-                        {user.isBanned ? "🔓 Reactivate Account" : "🚫 Suspend User Access"}
-                      </button>
-
-                      {/* Upgraded Verification Check Block defending Super Admin and peer Admin records */}
-                      <button
-                        onClick={() => {
-                          if (user.email === SUPER_ADMIN_EMAIL || user.role === "Admin") {
-                            alert("Super Admin and standard Admin accounts cannot be deleted.");
-                            return;
-                          }
-                          handleDeleteUser(user.id, user.email);
-                        }}
-                        style={{
-                          backgroundColor: "#ef4444",
-                          color: "white",
-                          border: "none",
-                          padding: "8px 16px",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontWeight: "600",
-                          fontSize: "13px",
-                          marginLeft: "auto"
-                        }}
-                      >
-                        🗑️ Wipe Record Permanently
-                      </button>
-                      
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0", background: "#f8fafc", borderRadius: "8px" }}>
-                  No account profiles match your search criteria "{searchTerm}"
-                </p>
-              )}
+                  ))
+                ) : (
+                  <p style={{ color: "#22c55e", fontSize: "14px", fontWeight: "500" }}>
+                    🟢 Clean sheet! No founder profiles currently awaiting identity validation checks.
+                  </p>
+                )}
+              </div>
             </>
           )}
 
-          {/* New Onboarding Management Gateway: Role Requests Tab Node */}
+          {/* Investor Verification Content Display Loop Area */}
+          {activeTab === "investorVerification" && (
+            <>
+              <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
+                Investor Credentials Verification Queue
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+                {pendingInvestors.length > 0 ? (
+                  pendingInvestors.map((investor) => (
+                    <div key={investor.id} className="post-card" style={{ borderLeft: "5px solid #10b981" }}>
+                      <h3 style={{ margin: "0 0 5px 0" }}>💰 {investor.name}</h3>
+                      <p style={{ margin: "0 0 10px 0", color: "#64748b", fontSize: "14px" }}>{investor.email}</p>
+                      
+                      <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+                        <button
+                          onClick={() => handleVerificationApproval(investor.id, true)}
+                          style={{
+                            backgroundColor: "#22c55e",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✓ Approve Investor
+                        </button>
+                        <button
+                          onClick={() => handleVerificationApproval(investor.id, false)}
+                          style={{
+                            backgroundColor: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✕ Reject Investor
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#10b981", fontSize: "14px", fontWeight: "500" }}>
+                    🟢 Clean sheet! No investor profiles currently awaiting verification checks.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Freelancer Verification Content Display Loop Area */}
+          {activeTab === "freelancerVerification" && (
+            <>
+              <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
+                Freelancer Profile Verification Queue
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+                {pendingFreelancers.length > 0 ? (
+                  pendingFreelancers.map((freelancer) => (
+                    <div key={freelancer.id} className="post-card" style={{ borderLeft: "5px solid #a855f7" }}>
+                      <h3 style={{ margin: "0 0 5px 0" }}>👨‍💻 {freelancer.name}</h3>
+                      <p style={{ margin: "0 0 10px 0", color: "#64748b", fontSize: "14px" }}>{freelancer.email}</p>
+                      
+                      <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+                        <button
+                          onClick={() => handleVerificationApproval(freelancer.id, true)}
+                          style={{
+                            backgroundColor: "#22c55e",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✓ Approve Freelancer
+                        </button>
+                        <button
+                          onClick={() => handleVerificationApproval(freelancer.id, false)}
+                          style={{
+                            backgroundColor: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✕ Reject Freelancer
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#a855f7", fontSize: "14px", fontWeight: "500" }}>
+                    🟢 Clean sheet! No freelancer profiles currently awaiting verification checks.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Role Requests Tab Node */}
           {activeTab === "roleRequests" && (
             <>
-              {/* Content Processing Dashboard Node */}
               <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px", marginBottom: "15px" }}>
                 Pending Role Access Requests
               </h2>
@@ -991,6 +1082,159 @@ function AdminPage() {
             </>
           )}
 
+          {/* Users Tab Wrapper Node */}
+          {activeTab === "users" && (
+            <>
+              <h2 style={{ color: "#334155", borderBottom: "2px solid #e2e8f0", paddingBottom: "8px" }}>User Management</h2>
+              
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <div 
+                    key={user.id} 
+                    className="post-card"
+                    style={{
+                      opacity: user.isBanned ? 0.65 : 1,
+                      borderRight: user.isBanned ? "6px solid #f59e0b" : "none",
+                      transition: "all 0.2s ease-in-out"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                      <div style={{ flexGrow: 1 }}>
+                        <h3 style={{ margin: "0 0 5px 0", display: "flex", alignItems: "center" }}>
+                          {user.name || "Anonymous User"} 
+                          
+                          {user.email === SUPER_ADMIN_EMAIL && (
+                            <span style={{
+                              background: "#dc2626",
+                              color: "white",
+                              padding: "2px 8px",
+                              borderRadius: "12px",
+                              fontSize: "11px",
+                              marginLeft: "10px",
+                              fontWeight: "700"
+                            }}>
+                              SUPER ADMIN
+                            </span>
+                          )}
+
+                          {user.isBanned && (
+                            <span style={{ 
+                              color: "#d97706", 
+                              background: "#fef3c7", 
+                              fontSize: "12px", 
+                              padding: "2px 8px", 
+                              borderRadius: "12px", 
+                              marginLeft: "10px",
+                              fontWeight: "600"
+                            }}>
+                              Account Suspended
+                            </span>
+                          )}
+                        </h3>
+                        <p style={{ margin: "0 0 12px 0", color: "#64748b", fontSize: "14px" }}>{user.email}</p>
+                      </div>
+                    </div>
+                    
+                    <div style={{ margin: "12px 0", display: "flex", alignItems: "center", gap: "10px" }}>
+                      <label htmlFor={`role-${user.id}`} style={{ fontWeight: "600", fontSize: "14px", color: "#475569" }}>
+                        Assigned Platform Role:
+                      </label>
+                      <select
+                        id={`role-${user.id}`}
+                        value={user.role || "Freelancer"}
+                        disabled={!isSuperAdmin || user.email === SUPER_ADMIN_EMAIL}
+                        onChange={(e) => {
+                          if (user.role === "Admin" && !isSuperAdmin) {
+                            alert("Admins cannot modify other Admin accounts.");
+                            return;
+                          }
+                          handleRoleChange(user.id, user.email, e.target.value);
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: "4px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: (!isSuperAdmin || user.email === SUPER_ADMIN_EMAIL) ? "#e2e8f0" : "#ffffff",
+                          fontSize: "14px",
+                          cursor: (!isSuperAdmin || user.email === SUPER_ADMIN_EMAIL) ? "not-allowed" : "pointer",
+                          fontWeight: "500"
+                        }}
+                      >
+                        {isSuperAdmin && <option value="Admin">Admin</option>}
+                        <option value="Founder">Founder</option>
+                        <option value="Investor">Investor</option>
+                        <option value="Freelancer">Freelancer</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "20px", margin: "10px 0", fontSize: "13px", color: "#64748b" }}>
+                      <span><strong>Followers Count:</strong> {user.followers?.length || 0}</span>
+                      <span><strong>Following Count:</strong> {user.following?.length || 0}</span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "10px", marginTop: "15px", borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+                      <button
+                        disabled={user.email === SUPER_ADMIN_EMAIL}
+                        onClick={() => {
+                          if (user.email === SUPER_ADMIN_EMAIL) {
+                            alert("Super Admin account cannot be suspended.");
+                            return;
+                          }
+                          if (user.role === "Admin" && !isSuperAdmin) {
+                            alert("Admin accounts cannot be suspended.");
+                            return;
+                          }
+                          handleBanUser(user.id, user.email, !!user.isBanned);
+                        }}
+                        style={{
+                          backgroundColor: user.isBanned ? "#22c55e" : "#ea580c",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: "4px",
+                          fontWeight: "600",
+                          fontSize: "13px",
+                          opacity: user.email === SUPER_ADMIN_EMAIL ? 0.5 : 1,
+                          cursor: user.email === SUPER_ADMIN_EMAIL ? "not-allowed" : "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        {user.isBanned ? "🔓 Reactivate Account" : "🚫 Suspend User Access"}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (user.email === SUPER_ADMIN_EMAIL || user.role === "Admin") {
+                            alert("Super Admin and standard Admin accounts cannot be deleted.");
+                            return;
+                          }
+                          handleDeleteUser(user.id, user.email);
+                        }}
+                        style={{
+                          backgroundColor: "#ef4444",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontWeight: "600",
+                          fontSize: "13px",
+                          marginLeft: "auto"
+                        }}
+                      >
+                        🗑️ Wipe Record Permanently
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0", background: "#f8fafc", borderRadius: "8px" }}>
+                  No account profiles match your search criteria "{searchTerm}"
+                </p>
+              )}
+            </>
+          )}
+
           {/* Settings Tab Wrapper Node */}
           {activeTab === "settings" && isSuperAdmin && (
             <>
@@ -1007,7 +1251,6 @@ function AdminPage() {
 
               <div className="post-card">
                 <h3>Maintenance Mode</h3>
-                {/* Step 10.5: Maintenance tracking replacement check hook mapping */}
                 <button
                   className={maintenanceMode ? "delete-btn" : "create-btn"}
                   onClick={() => saveMaintenanceMode(!maintenanceMode)}
@@ -1026,7 +1269,6 @@ function AdminPage() {
                 <hr style={{ margin: "20px 0", border: "0", borderTop: "1px solid #e2e8f0" }} />
 
                 <h3>Registration Access</h3>
-                {/* Step 10.5: Registration access replacement check hook mapping */}
                 <button
                   className={registrationEnabled ? "delete-btn" : "create-btn"}
                   onClick={() => saveRegistrationStatus(!registrationEnabled)}
@@ -1045,7 +1287,7 @@ function AdminPage() {
             </>
           )}
 
-        {/* Step 4: Close Layout Wrap Elements */}
+        {/* Close Layout Wrap Elements */}
         </div>
       </div>
     </div>

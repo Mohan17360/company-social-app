@@ -1,7 +1,14 @@
 // src/components/Sidebar.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../firebase";
 
@@ -12,15 +19,26 @@ function Sidebar() {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadGroupCount, setUnreadGroupCount] = useState(0);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
     let unsubscribeNotif = null;
     let unsubscribeGroupNotif = null;
     let unsubscribeChats = null;
 
-    // Monitor Auth State changes gracefully
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    // Monitoring Auth State changes gracefully (Kept alive to prevent notifications breakdown)
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+
+          if (userDoc.exists()) {
+            setUserRole(userDoc.data().role || "");
+          }
+        } catch (error) {
+          console.error("Error updating admin authorization role:", error);
+        }
+
         // 1. Real-time Notifications Listener (Primary)
         const notifQuery = query(
           collection(db, "notifications"),
@@ -29,7 +47,6 @@ function Sidebar() {
         );
 
         unsubscribeNotif = onSnapshot(notifQuery, (snapshot) => {
-          // TEMPORARY DEBUGGING: Target snapshot documents logging pipeline
           console.log(
             "Sidebar Notifications (Primary receiverEmail):",
             snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
@@ -37,7 +54,6 @@ function Sidebar() {
 
           setUnreadNotifCount(snapshot.size);
 
-          // Count notifications containing a groupId
           const groupCount = snapshot.docs.filter(
             (doc) => doc.data().groupId
           ).length;
@@ -52,13 +68,11 @@ function Sidebar() {
         );
 
         unsubscribeGroupNotif = onSnapshot(groupNotifQuery, (snapshot) => {
-          // TEMPORARY DEBUGGING: Fallback schema monitoring logs
           console.log(
             "Sidebar Notifications (Fallback userEmail):",
             snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
           );
 
-          // Sirf wahi docs count karo jisme groupId ho aur receiverEmail missing ho
           const legacyGroupCount = snapshot.docs.filter(
             (doc) => doc.data().groupId && !doc.data().receiverEmail
           ).length;
@@ -97,6 +111,7 @@ function Sidebar() {
         setUnreadNotifCount(0);
         setUnreadChatCount(0);
         setUnreadGroupCount(0);
+        setUserRole("");
         if (unsubscribeNotif) unsubscribeNotif();
         if (unsubscribeGroupNotif) unsubscribeGroupNotif();
         if (unsubscribeChats) unsubscribeChats();
@@ -160,9 +175,25 @@ function Sidebar() {
         👤 Profile
       </button>
 
-      <button onClick={() => navigate("/admin")} style={{ display: "flex", alignItems: "center", width: "100%" }}>
-        ⚙️ Admin
-      </button>
+      {userRole !== "Admin" && (
+        <button onClick={() => navigate("/data-room")} style={{ display: "flex", alignItems: "center", width: "100%" }}>
+          Data Room
+        </button>
+      )}
+
+      {/* Renders conditional admin links dependent on structural setup rules */}
+      {userRole === "Admin" && (
+        <button
+          onClick={() => navigate("/admin")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            width: "100%",
+          }}
+        >
+          ⚙️ Admin
+        </button>
+      )}
     </div>
   );
 }

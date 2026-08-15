@@ -67,7 +67,16 @@ function NotificationsPage() {
         where("receiverEmail", "==", user.email)
       );
 
+      // Added: Trace current user session details
+      console.log("CURRENT USER:", user.email);
+
       unsubscribeNotifications = onSnapshot(q, (snapshot) => {
+        // Added: Diagnostic log to track matched notifications size instantly
+        console.log(
+          "NOTIFICATIONS FOUND:",
+          snapshot.docs.length
+        );
+
         primaryDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         mergeAndProcess();
       }, (err) => console.error("Primary notification stream failed:", err));
@@ -95,12 +104,12 @@ function NotificationsPage() {
       <div className="feed-container">
         <h1 className="feed-title">Notifications</h1>
 
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <div className="notifications-actions" style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
           <button className="edit-btn" onClick={() => navigate(-1)}>
-            ← Back
+            &larr; Back
           </button>
           <button className="create-btn" onClick={() => window.location.reload()}>
-            ↻ Refresh
+            &#8635; Refresh
           </button>
         </div>
 
@@ -110,10 +119,49 @@ function NotificationsPage() {
           </p>
         ) : (
           notifications.map((item) => (
-            <div key={item.id} className="post-card">
-              <p style={{ margin: 0, fontSize: "15px", lineHeight: "1.6" }}>
-                {item.message || item.text || "New updates received."}
-              </p>
+            /* Upgraded: Card container wrapper enhanced with an elegant left border indicator layout */
+            <div
+              key={item.id}
+              className="post-card notification-card"
+              style={{
+                borderLeft: "4px solid #3b82f6",
+              }}
+            >
+              {/* Upgraded: Render dynamic textual description alongside an explicit locale timestamp trail */}
+              <div className="notification-content">
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "15px",
+                    lineHeight: "1.6",
+                    fontWeight: "500",
+                  }}
+                >
+                  {item.message || item.text || "New updates received."}
+                </p>
+
+                <p
+                  style={{
+                    marginTop: "8px",
+                    color: "#94a3b8",
+                    fontSize: "12px",
+                  }}
+                >
+                  {item.createdAt?.seconds
+                    ? new Date(
+                        item.createdAt.seconds * 1000
+                      ).toLocaleString("en-IN", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      })
+                    : "Time unavailable"}
+                </p>
+              </div>
             </div>
           ))
         )}

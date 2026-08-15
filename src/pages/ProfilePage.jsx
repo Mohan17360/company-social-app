@@ -192,6 +192,7 @@ function ProfilePage() {
 
         {/* Action Dashboard controls tray row injected directly below Header modules */}
         <div
+          className="profile-actions"
           style={{
             display: "flex",
             gap: "10px",
@@ -237,7 +238,7 @@ function ProfilePage() {
         </div>
 
         {/* Correct Structure Section / STEP 5: Settings Form Block (Role Selector Removed Safely) */}
-        <div className="post-card">
+        <div className="post-card profile-settings">
           <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "15px" }}>Edit Profile Settings</h2>
           
           <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
@@ -310,6 +311,7 @@ function ProfilePage() {
 
         {/* STEP 2: Render Sub-tab switcher toolbar wrapper container context bar layout triggers */}
         <div
+          className="profile-tabs"
           style={{
             display: "flex",
             gap: "10px",

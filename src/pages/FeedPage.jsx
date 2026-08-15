@@ -9,11 +9,11 @@ import {
   onSnapshot,
   arrayUnion,
   arrayRemove,
+  getDoc,
 } from "firebase/firestore";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "../firebase";
 import PostCard from "../components/PostCard";
-// Imported useNavigate for smooth client-side SPA routing
 import { useNavigate } from "react-router-dom";
 
 function FeedPage() {
@@ -29,12 +29,45 @@ function FeedPage() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
 
-  // STEP 1: Added user search core state dependencies hooks
+  // Added user search core state dependencies hooks
   const [userSearch, setUserSearch] = useState("");
   const [allUsers, setAllUsers] = useState([]);
 
-  // Initialized the navigate hook instance
+  // Added ndaRequired state to control access policies on creation payloads
+  const [ndaRequired, setNdaRequired] = useState(false);
+
+  // STEP 2 Applied: Added ndaType state hook to automate multi-role NDA pipelines
+  const [ndaType, setNdaType] = useState("");
+
+  // Initialize the navigate hook instance
   const navigate = useNavigate();
+
+  // Added goToDashboard function with direct asynchronous session tracking matrix
+  const goToDashboard = async () => {
+    const user = auth.currentUser;
+
+    if (!user) return;
+
+    try {
+      const snap = await getDoc(
+        doc(db, "users", user.uid)
+      );
+
+      if (!snap.exists()) return;
+
+      const role = snap.data().role;
+
+      if (role === "Founder") {
+        navigate("/founder-dashboard");
+      } else if (role === "Investor") {
+        navigate("/investor-dashboard");
+      } else if (role === "Freelancer") {
+        navigate("/freelancer-dashboard");
+      }
+    } catch (error) {
+      console.error("Dashboard routing failed from Feed:", error);
+    }
+  };
 
   // Clear online flag when user leaves, closes the tab, or refreshes
   useEffect(() => {
@@ -64,7 +97,7 @@ function FeedPage() {
       setPosts(postList.reverse());
     });
 
-    // STEP 1 (Continued): Registered clean live query data-stream pipeline for users context maps
+    // Registered clean live query data-stream pipeline for users context maps
     const unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -107,6 +140,17 @@ function FeedPage() {
             uid: user.uid,
             ...data,
           });
+
+          // STEP 3 Applied: Automatically maps ecosystem role properties to initialize ndaType safely
+          if (data.role === "Founder") {
+            setNdaType("Founder");
+          } else if (data.role === "Investor") {
+            setNdaType("Investor");
+          } else if (data.role === "Freelancer") {
+            setNdaType("Freelancer");
+          } else {
+            setNdaType("Founder"); // Safe baseline routing fallback template configuration
+          }
         }
       });
 
@@ -156,11 +200,30 @@ function FeedPage() {
     if (!post.trim() && !image) return;
 
     try {
+      // Step 2.2 Applied: Dynamic background pre-fetch resolves target active version matrices perfectly
+      let currentNdaVersion = 1;
+
+      if (ndaRequired) {
+        const agreementRef = doc(
+          db,
+          "agreementTemplates",
+          ndaType
+        );
+
+        const agreementSnap = await getDoc(agreementRef);
+
+        if (agreementSnap.exists()) {
+          currentNdaVersion =
+            agreementSnap.data().version || 1;
+        }
+      }
+
       let imageUrl = "";
       if (image) {
         imageUrl = await uploadImage();
       }
 
+      // Step 2.3 Applied: Swapped fixed fallback value to securely trace currentNdaVersion parameters
       await addDoc(collection(db, "posts"), {
         uid: userData.uid,
         name: userData.name,
@@ -169,15 +232,22 @@ function FeedPage() {
         photo: userData.photo || "",
         content: post,
         image: imageUrl,
+        
+        ndaRequired: ndaRequired,
+        ndaType: ndaRequired ? ndaType : "",
+        ndaVersion: ndaRequired ? currentNdaVersion : 0,
+
         likes: [],
         createdAt: new Date(),
         updatedAt: null,
       });
 
+      // Reset all operational state triggers cleanly upon fulfillment
       setMessage("");
       setImage(null);
       setPreview("");
       setSelectedFileName(""); 
+      setNdaRequired(false);
       
       // Auto-collapse creation popup cleanly upon successful task processing
       setShowCreatePost(false);
@@ -264,7 +334,7 @@ function FeedPage() {
       item.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // STEP 3: Integrated filtration conditional matching reduction maps
+  // Integrated filtration conditional matching reduction maps
   const filteredUsers = allUsers.filter(
     (user) =>
       user.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -272,10 +342,9 @@ function FeedPage() {
   );
 
   return (
-    /* UPGRADE ENGINE: Wrapped everything inside the master app-layout view grid block */
     <div className="app-layout">
       
-      {/* STEP 1 & UPGRADE: Modernized Side Action Tray Panel Overlay Framework */}
+      {/* Modernized Side Action Tray Panel Overlay Framework */}
       <div className="instagram-sidebar">
         <h2 className="sidebar-logo">
           Company Social
@@ -358,9 +427,9 @@ function FeedPage() {
         </button>
       </div>
 
-      {/* FIXED: Dynamic side-by-side core template layout panel isolation context box */}
+      {/* Dynamic side-by-side core template layout panel isolation context box */}
       <div className="feed-main-content">
-        {/* STEP 2: Profile identity verification sub-bar component context */}
+        {/* Profile identity verification sub-bar component context */}
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -382,14 +451,30 @@ function FeedPage() {
             <span>Hi, <strong>{userData?.name || "User"}</strong> ({userData?.role})</span>
           </div>
 
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* Dynamic role-resolving Dashboard button on the right row side */}
+          <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+            <button
+              onClick={goToDashboard}
+              style={{
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
+              }}
+            >
+              🏠 Dashboard
+            </button>
+
             <button onClick={() => navigate("/saved")} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", textDecoration: "underline" }}>
               Saved Posts
             </button>
           </div>
         </div>
 
-        {/* STEP 3: Target user profiles tracker workspace input field hook */}
+        {/* Target user profiles tracker workspace input field hook */}
         <input
           id="user-search"
           type="text"
@@ -400,7 +485,7 @@ function FeedPage() {
           style={{ marginBottom: "10px" }}
         />
 
-        {/* STEP 4: Render modular absolute dynamic target User query maps block overlay wrapper */}
+        {/* Render modular absolute dynamic target User query maps block overlay wrapper */}
         {userSearch && (
           <div className="post-card" style={{ marginBottom: "20px", backgroundColor: "#1e293b", padding: "10px", borderRadius: "12px" }}>
             {filteredUsers.length > 0 ? (
@@ -522,8 +607,36 @@ function FeedPage() {
                   outline: "none"
                 }}
               />
+
+              {/* NDA Requirement Policy Control Toggle Input Row */}
+              <div
+                style={{
+                  marginTop: "-5px",
+                  marginBottom: "15px",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                <label style={{ display: "flex", alignItems: "center", cursor: "pointer", fontSize: "14px" }}>
+                  <input
+                    type="checkbox"
+                    checked={ndaRequired}
+                    onChange={(e) => setNdaRequired(e.target.checked)}
+                    style={{ marginRight: "8px", cursor: "pointer", width: "16px", height: "16px" }}
+                  />
+                  🔒 NDA Required Before Viewing
+                </label>
+              </div>
+
+              {/* Sub-context Inline Label showing the dynamic auto-detected NDA status */}
+              {ndaRequired && ndaType && (
+                <div style={{ marginTop: "-10px", marginBottom: "15px", fontSize: "13px", color: "#38bdf8", fontWeight: "600" }}>
+                  📋 Auto-locked to: {ndaType} NDA Template
+                </div>
+              )}
               
-              {/* Step 7: Integrated Horizontal Instagram Style Toolbar Row Controls */}
+              {/* Integrated Horizontal Instagram Style Toolbar Row Controls */}
               <div className="create-post-tools" style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
                 
                 {/* 🖼️ Tool Button Housing Hidden Label Photo File Upload Trigger */}

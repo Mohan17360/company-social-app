@@ -21,7 +21,7 @@ import { db, auth } from "../firebase"; // Storage instance pull completely remo
 import AppLayout from "../components/AppLayout";
 
 // Injected clean unified storage bridge utility loader asset
-import { uploadToCloudinary } from "../utils/cloudinaryUpload";
+import { uploadToCloudinary } from "../services/cloudinaryUpload";
 
 function GroupChatPage({ embedded = false, embeddedGroupId = null }) {
   const params = useParams();
